@@ -2,7 +2,19 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Login / Signup Debug</title>
+<title>Login / Signup Debug with UI Messages</title>
+<style>
+  #message {
+    margin-top: 10px;
+    font-family: Arial, sans-serif;
+  }
+  #message.error {
+    color: red;
+  }
+  #message.success {
+    color: green;
+  }
+</style>
 </head>
 <body>
 
@@ -11,6 +23,8 @@
 <input type="password" id="password" placeholder="Password" />
 <button id="loginBtn">Login</button>
 <button id="signupBtn">Sign Up</button>
+
+<div id="message"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 <script>
@@ -24,35 +38,49 @@
   const passwordInput = document.getElementById('password');
   const loginBtn = document.getElementById('loginBtn');
   const signupBtn = document.getElementById('signupBtn');
+  const messageDiv = document.getElementById('message');
+
+  function showMessage(text, isError = false) {
+    messageDiv.textContent = text;
+    messageDiv.className = isError ? 'error' : 'success';
+  }
 
   loginBtn.onclick = async () => {
     console.log("Login button clicked");
+    showMessage('');
     const email = emailInput.value.trim();
     const password = passwordInput.value;
-    if (!email || !password) return alert('Please enter email and password');
+    if (!email || !password) {
+      showMessage('Please enter email and password', true);
+      return;
+    }
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       console.error("Login error:", error);
-      alert('Login failed: ' + error.message);
+      showMessage('Login failed: ' + error.message, true);
     } else {
       console.log("Login success:", data);
-      alert('Login successful!');
-      // redirect or do something
+      showMessage('Login successful!');
+      // redirect or further action here if needed
     }
   };
 
   signupBtn.onclick = async () => {
     console.log("Signup button clicked");
+    showMessage('');
     const email = emailInput.value.trim();
     const password = passwordInput.value;
-    if (!email || !password) return alert('Please enter email and password');
+    if (!email || !password) {
+      showMessage('Please enter email and password', true);
+      return;
+    }
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) {
       console.error("Signup error:", error);
-      alert('Signup failed: ' + error.message);
+      showMessage('Signup failed: ' + error.message, true);
     } else {
       console.log("Signup success:", data);
-      alert('Signup successful! Please check your email.');
+      showMessage('Signup successful! Please check your email.');
     }
   };
 </script>
