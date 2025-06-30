@@ -93,16 +93,16 @@
   </div>
 
   <script>
-    const supabase = supabase.createClient(
+    const supabase = window.supabase.createClient(
       'https://sgtfjntptdxgrcqqkftn.supabase.co',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNndGZqbnRwdGR4Z3JjcXFrZnRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyNDE3NzksImV4cCI6MjA2NjgxNzc3OX0.6u77xHcSVwShF2YDtaPMuo9NIw035v8QczoNAqqDVVk'
     );
 
     const authBox = document.getElementById('authBox');
     const storageBox = document.getElementById('storageBox');
-    const emailI = document.getElementById('email');
-    const passI = document.getElementById('password');
-    const fileI = document.getElementById('fileInput');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const fileInput = document.getElementById('fileInput');
     const fileList = document.getElementById('fileList');
 
     const showStorage = () => {
@@ -116,39 +116,36 @@
       return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
     };
 
-    document.getElementById('signUpBtn').onclick = async () => {
-      const { error } = await supabase.auth.signUp({
-        email: emailI.value,
-        password: passI.value
-      });
-      alert(error ? error.message : 'Check your email to verify your account!');
-    };
+    document.getElementById('signUpBtn').addEventListener('click', async () => {
+      const email = emailInput.value;
+      const password = passwordInput.value;
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      console.log(data, error);
+      alert(error ? error.message : 'Signed up successfully!');
+    });
 
-    document.getElementById('signInBtn').onclick = async () => {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: emailI.value,
-        password: passI.value
-      });
-
+    document.getElementById('signInBtn').addEventListener('click', async () => {
+      const email = emailInput.value;
+      const password = passwordInput.value;
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      console.log(data, error);
       if (error) {
-        alert('Login failed: ' + error.message);
-      } else if (!data.session) {
-        alert('Please verify your email before logging in.');
+        alert(error.message);
       } else {
         showStorage();
       }
-    };
+    });
 
-    document.getElementById('signOutBtn').onclick = async () => {
+    document.getElementById('signOutBtn').addEventListener('click', async () => {
       await supabase.auth.signOut();
       storageBox.classList.add('hidden');
       authBox.classList.remove('hidden');
-    };
+    });
 
     document.getElementById('uploadBtn').onclick = async () => {
-      const userResponse = await supabase.auth.getUser();
-      const user = userResponse.data.user;
-      const file = fileI.files[0];
+      const userResp = await supabase.auth.getUser();
+      const user = userResp.data.user;
+      const file = fileInput.files[0];
       if (!file) return alert('Select a file first.');
 
       const path = `${user.id}/${Date.now()}-${file.name}`;
@@ -171,8 +168,8 @@
     };
 
     async function listFiles() {
-      const userResponse = await supabase.auth.getUser();
-      const user = userResponse.data.user;
+      const userResp = await supabase.auth.getUser();
+      const user = userResp.data.user;
       const { data, error } = await supabase
         .from('files')
         .select('*')
