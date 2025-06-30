@@ -1,1 +1,50 @@
-0
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Login / Signup</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 400px; margin: auto; }
+    input, button { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; }
+    button { cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h2>Login or Signup</h2>
+  <input type="email" id="email" placeholder="Email" />
+  <input type="password" id="password" placeholder="Password" />
+  <button id="loginBtn">Login</button>
+  <button id="signupBtn">Sign Up</button>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script>
+    const supabase = supabase.createClient(
+      "https://sgtfjntptdxgrcqkftn.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNndGZqbnRwdGR4Z3JjcXFrZnRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyNDE3NzksImV4cCI6MjA2NjgxNzc3OX0.6u77xHcSVwShF2YDtaPMuo9NIw035v8QczoNAqqDVVk"
+    );
+
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const loginBtn = document.getElementById('loginBtn');
+    const signupBtn = document.getElementById('signupBtn');
+
+    loginBtn.onclick = async () => {
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+      if (!email || !password) return alert('Please enter email and password');
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) alert('Login failed: ' + error.message);
+      else window.location.href = '/cloudstorage/';  // Redirect on success
+    };
+
+    signupBtn.onclick = async () => {
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+      if (!email || !password) return alert('Please enter email and password');
+      const { error } = await supabase.auth.signUp({ email, password });
+      if (error) alert('Signup failed: ' + error.message);
+      else alert('Signup successful! Please check your email to confirm.');
+    };
+  </script>
+</body>
+</html>
