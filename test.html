@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Login Test</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+</head>
+<body>
+  <h2>Login</h2>
+  <input type="email" id="email" placeholder="Email"><br><br>
+  <input type="password" id="password" placeholder="Password"><br><br>
+  <button id="signUpBtn">Sign Up</button>
+  <button id="signInBtn">Log In</button>
+
+  <script>
+    const supabase = supabase.createClient(
+      'https://sgtfjntptdxgrcqqkftn.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNndGZqbnRwdGR4Z3JjcXFrZnRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyNDE3NzksImV4cCI6MjA2NjgxNzc3OX0.6u77xHcSVwShF2YDtaPMuo9NIw035v8QczoNAqqDVVk'
+    );
+
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+
+    document.getElementById('signUpBtn').addEventListener('click', async () => {
+      const email = emailInput.value;
+      const password = passwordInput.value;
+
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      console.log('SignUp:', { data, error });
+      alert(error ? error.message : 'Sign-up successful! Check your email.');
+    });
+
+    document.getElementById('signInBtn').addEventListener('click', async () => {
+      const email = emailInput.value;
+      const password = passwordInput.value;
+
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      console.log('SignIn:', { data, error });
+      alert(error ? error.message : 'Logged in!');
+    });
+  </script>
+</body>
+</html>
