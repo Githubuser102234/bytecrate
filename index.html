@@ -8,14 +8,12 @@
     body {
       font-family: Arial, sans-serif;
       margin: 0;
-      background: #f9f9f9;
+      background: #f5f5f5;
       padding: 20px;
-      color: #333;
     }
 
     h2 {
       text-align: center;
-      color: #444;
     }
 
     .top-bar {
@@ -87,6 +85,15 @@
       cursor: pointer;
     }
 
+    #error {
+      background: #ffdddd;
+      color: #b00020;
+      padding: 10px;
+      margin-top: 15px;
+      border-radius: 5px;
+      display: none;
+    }
+
     @media (max-width: 600px) {
       .top-bar {
         flex-direction: column;
@@ -109,6 +116,8 @@
   <button id="uploadBtn">Upload</button>
 </div>
 
+<div id="error"></div>
+
 <h3>Your Files</h3>
 <div id="file-list"></div>
 
@@ -124,38 +133,58 @@
   const fileInput = document.getElementById('fileInput');
   const uploadBtn = document.getElementById('uploadBtn');
   const fileList = document.getElementById('file-list');
+  const errorBox = document.getElementById('error');
+
+  const showError = (msg) => {
+    errorBox.style.display = 'block';
+    errorBox.textContent = msg;
+  };
 
   logoutBtn.onclick = async () => {
     await supabase.auth.signOut();
     window.location.href = 'https://githubuser102234.github.io/cloudstorage/login';
   };
 
-  async function getUser() {
-    const { data: { user }, error } = await supabase.auth.getUser();
-    if (!user) {
+  async function getUserOrRedirect() {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) {
       window.location.href = 'https://githubuser102234.github.io/cloudstorage/login';
+      return null;
     }
-    return user;
+    return data.user;
   }
 
   uploadBtn.onclick = async () => {
-    const file = fileInput.files[0];
-    if (!file) return alert('Please select a file');
+    errorBox.style.display = 'none';
 
-    const user = await getUser();
+    const file = fileInput.files[0];
+    if (!file) return showError('Please select a file.');
+
+    const user = await getUserOrRedirect();
+    if (!user) return;
+
     const path = `${user.id}/${Date.now()}_${file.name}`;
 
-    const { error: uploadError } = await supabase.storage.from('uploads').upload(path, file);
-    if (uploadError) return alert('Upload error: ' + uploadError.message);
+    const { error: uploadError } = await supabase.storage
+      .from('uploads')
+      .upload(path, file);
 
-    const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(path);
+    if (uploadError) return showError('Upload error: ' + uploadError.message);
+
+    const { data: pubUrlData, error: pubUrlErr } = supabase
+      .storage
+      .from('uploads')
+      .getPublicUrl(path);
+
+    if (pubUrlErr) return showError('Public URL error: ' + pubUrlErr.message);
 
     const { error: dbError } = await supabase.from('files').insert({
       user_id: user.id,
       filename: file.name,
-      url: publicUrl
+      url: pubUrlData.publicUrl
     });
-    if (dbError) return alert('DB insert error: ' + dbError.message);
+
+    if (dbError) return showError('Database insert error: ' + dbError.message);
 
     fileInput.value = '';
     loadFiles();
@@ -163,7 +192,10 @@
 
   async function loadFiles() {
     fileList.innerHTML = '';
-    const user = await getUser();
+    errorBox.style.display = 'none';
+
+    const user = await getUserOrRedirect();
+    if (!user) return;
 
     const { data: files, error } = await supabase
       .from('files')
@@ -171,7 +203,7 @@
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
-    if (error) return alert('Error loading files: ' + error.message);
+    if (error) return showError('Error loading files: ' + error.message);
 
     if (!files.length) {
       fileList.innerHTML = '<p>No files uploaded yet.</p>';
@@ -207,10 +239,10 @@
       delBtn.onclick = async () => {
         const path = file.url.split('/uploads/')[1];
         const { error: storageErr } = await supabase.storage.from('uploads').remove([path]);
-        if (storageErr) return alert('Storage delete error: ' + storageErr.message);
+        if (storageErr) return showError('Storage delete error: ' + storageErr.message);
 
         const { error: dbErr } = await supabase.from('files').delete().eq('id', file.id);
-        if (dbErr) return alert('DB delete error: ' + dbErr.message);
+        if (dbErr) return showError('DB delete error: ' + dbErr.message);
 
         loadFiles();
       };
@@ -221,7 +253,8 @@
   }
 
   (async () => {
-    const user = await getUser();
+    const user = await getUserOrRedirect();
+    if (!user) return;
     userEmailSpan.textContent = user.email;
     loadFiles();
   })();
