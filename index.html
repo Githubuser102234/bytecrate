@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cloud Storage App</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f2f5;
+      padding: 20px;
+      text-align: center;
+    }
+    #auth, #upload, #fileList {
+      max-width: 450px;
+      margin: 20px auto;
+      background: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    input, button {
+      margin: 8px;
+      padding: 10px;
+      width: 90%;
+    }
+    ul { list-style: none; padding: 0; }
+    li {
+      background: #fafafa;
+      border: 1px solid #ddd;
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 6px;
+    }
+    img, video {
+      max-width: 100%;
+      height: auto;
+      margin-top: 10px;
+    }
+    .file-actions {
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Supabase Cloud Storage</h2>
+
+  <div id="auth">
+    <input type="email" id="email" placeholder="Email" /><br />
+    <input type="password" id="password" placeholder="Password" /><br />
+    <button onclick="signUp()">Sign Up</button>
+    <button onclick="signIn()">Log In</button>
+    <button onclick="signOut()">Log Out</button>
+  </div>
+
+  <div id="upload" style="display:none;">
+    <input type="file" id="fileInput" />
+    <button onclick="uploadFile()">Upload</button>
+  </div>
+
+  <div id="fileList" style="display:none;">
+    <h3>Your Files</h3>
+    <ul id="files"></ul>
+  </div>
+
+  <script>
+    const supabase = supabase.createClient(
+      'https://sgtfjntptdxgrcqqkftn.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNndGZqbnRwdGR4Z3JjcXFrZnRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyNDE3NzksImV4cCI6MjA2NjgxNzc3OX0.6u77xHcSVwShF2YDtaPMuo9NIw035v8QczoNAqqDVVk'
+    );
+
+    async function signUp() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const { error } = await supabase.auth.signUp({ email, password });
+      alert(error ? error.message : "Check your email to verify your account.");
+    }
+
+    async function signIn() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return alert(error.message);
+      alert("Logged in!");
+      showStorage();
+    }
+
+    async function signOut() {
+      await supabase.auth.signOut();
+      alert("Signed out.");
+      document.getElementById('upload').style.display = 'none';
+      document.getElementById('fileList').style.display = 'none';
+    }
+
+    async function showStorage() {
+      document.getElementById('upload').style.display = 'block';
+      document.getElementById('fileList').style.display = 'block';
+      listFiles();
+    }
+
+    async function uploadFile() {
+      const user = (await supabase.auth.getUser()).data.user;
+      const file = document.getElementById('fileInput').files[0];
+      if (!file) return alert("Please select a file.");
+      const filePath = `${user.id}/${Date.now()}-${file.name}`;
+      const { error } = await supabase.storage.from('files').upload(filePath, file);
+      if (error) return alert("Upload failed: " + error.message);
+      alert("File uploaded!");
+      listFiles();
+    }
+
+    async function listFiles() {
+      const user = (await supabase.auth.getUser()).data.user;
+      const { data, error } = await supabase.storage.from('files').list(`${user.id}/`, { limit: 100 });
+      const list = document.getElementById('files');
+      list.innerHTML = '';
+
+      if (error) return list.innerHTML = '<li>Error loading files</li>';
+
+      for (let file of data) {
+        const filePath = `${user.id}/${file.name}`;
+        const { data: urlData } = await supabase.storage.from('files').getPublicUrl(filePath);
+        const url = urlData.publicUrl;
+        const ext = file.name.split('.').pop().toLowerCase();
+
+        let preview = '';
+        if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+          preview = `<img src="${url}" alt="image" />`;
+        } else if (['mp4', 'webm', 'ogg'].includes(ext)) {
+          preview = `<video controls src="${url}"></video>`;
+        }
+
+        const li = document.createElement('li');
+        li.innerHTML = `
+          <strong>${file.name}</strong><br/>
+          <a href="${url}" target="_blank">Download</a>
+          <div class="file-actions">
+            <button onclick="deleteFile('${file.name}')">Delete</button>
+          </div>
+          ${preview}
+        `;
+        list.appendChild(li);
+      }
+    }
+
+    async function deleteFile(fileName) {
+      const user = (await supabase.auth.getUser()).data.user;
+      const filePath = `${user.id}/${fileName}`;
+      const { error } = await supabase.storage.from('files').remove([filePath]);
+      if (error) return alert("Delete failed: " + error.message);
+      alert("File deleted.");
+      listFiles();
+    }
+
+    // Auto login if session exists
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) showStorage();
+    });
+  </script>
+
+</body>
+</html>
