@@ -1,96 +1,68 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
   <title>Supabase Cloud Storage</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
     body {
-      margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      background: #f0f2f5;
-    }
-    .container {
-      background: #fff;
-      padding: 25px;
-      border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-      width: 100%;
-      max-width: 450px;
-    }
-    h2 { margin-bottom: 20px; }
-    input, button {
-      width: 100%;
-      padding: 12px;
-      margin: 8px 0;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      font-size: 16px;
-      box-sizing: border-box;
-    }
-    button {
-      background: #0069ed;
-      color: #fff;
-      border: none;
-      cursor: pointer;
-      transition: background .3s;
-    }
-    button:hover { background: #0051bb; }
-    .hidden { display: none; }
-    ul { list-style: none; padding: 0; }
-    .file-item {
-      background: #f9fafb;
-      border: 1px solid #ececec;
-      border-radius: 8px;
-      margin-top: 12px;
-      padding: 10px;
-    }
-    .file-item img, .file-item video {
-      max-width: 100%;
-      margin-top: 8px;
-      border-radius: 6px;
-    }
-    .theme-toggle {
-      text-align: right;
-      margin-top: -8px;
-      font-size: 14px;
-      cursor: pointer;
-      color: #888;
+      font-family: sans-serif;
+      padding: 20px;
+      background: #f9f9f9;
+      color: #333;
+      transition: background 0.3s, color 0.3s;
     }
     .dark-mode {
       background: #121212;
-      color: #eee;
+      color: #fff;
     }
-    .dark-mode .container {
-      background: #1e1e1e;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.7);
+    .hidden {
+      display: none;
     }
-    .dark-mode button { background: #5454d4; }
-    .dark-mode button:hover { background: #3a3a9f; }
+    input, button {
+      margin: 5px;
+      padding: 10px;
+      font-size: 14px;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+    .file-item {
+      margin-bottom: 20px;
+    }
+    img, video {
+      max-width: 300px;
+      display: block;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
-  <div class="container" id="authBox">
-    <h2>Supabase Cloud Storage</h2>
-    <input type="email" id="email" placeholder="Email">
-    <input type="password" id="password" placeholder="Password">
+
+  <h1>☁️ Supabase Cloud Storage</h1>
+  <button id="themeToggle">Toggle Dark Mode</button>
+
+  <!-- Auth UI -->
+  <div id="authBox">
+    <h2>Login or Sign Up</h2>
+    <input id="email" type="email" placeholder="Email"><br>
+    <input id="password" type="password" placeholder="Password"><br>
     <button id="signUpBtn">Sign Up</button>
-    <button id="signInBtn">Log In</button>
-    <div class="theme-toggle" id="themeToggle">🌗 Toggle Dark Mode</div>
+    <button id="signInBtn">Login</button>
   </div>
 
-  <div class="container hidden" id="storageBox">
-    <h2>Your Files</h2>
+  <!-- Storage UI -->
+  <div id="storageBox" class="hidden">
+    <h2>Welcome to your cloud!</h2>
     <input type="file" id="fileInput">
     <button id="uploadBtn">Upload</button>
+    <button id="signOutBtn">Logout</button>
+    <h3>Your Files:</h3>
     <ul id="fileList"></ul>
-    <button id="signOutBtn">Sign Out</button>
   </div>
+
+  <!-- Supabase client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
   <script>
     const supabase = supabase.createClient(
@@ -98,133 +70,134 @@
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNndGZqbnRwdGR4Z3JjcXFrZnRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyNDE3NzksImV4cCI6MjA2NjgxNzc3OX0.6u77xHcSVwShF2YDtaPMuo9NIw035v8QczoNAqqDVVk'
     );
 
-    const authBox = document.getElementById('authBox');
-    const storageBox = document.getElementById('storageBox');
-    const emailI = document.getElementById('email');
-    const passI = document.getElementById('password');
-    const fileI = document.getElementById('fileInput');
-    const fileList = document.getElementById('fileList');
+    document.addEventListener('DOMContentLoaded', () => {
+      const authBox = document.getElementById('authBox');
+      const storageBox = document.getElementById('storageBox');
+      const emailI = document.getElementById('email');
+      const passI = document.getElementById('password');
+      const fileI = document.getElementById('fileInput');
+      const fileList = document.getElementById('fileList');
 
-    const showStorage = () => {
-      authBox.classList.add('hidden');
-      storageBox.classList.remove('hidden');
-      listFiles();
-    };
+      const showStorage = () => {
+        authBox.classList.add('hidden');
+        storageBox.classList.remove('hidden');
+        listFiles();
+      };
 
-    const generateHashId = (length = 6) => {
-      const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-      return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-    };
+      const generateHashId = (length = 6) => {
+        const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+      };
 
-    document.getElementById('signUpBtn').onclick = async () => {
-      const { error } = await supabase.auth.signUp({
-        email: emailI.value,
-        password: passI.value
-      });
-      alert(error ? error.message : 'Check your email to verify!');
-    };
+      document.getElementById('signUpBtn').onclick = async () => {
+        const { error } = await supabase.auth.signUp({
+          email: emailI.value,
+          password: passI.value
+        });
+        alert(error ? error.message : 'Check your email to verify!');
+      };
 
-    document.getElementById('signInBtn').onclick = async () => {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: emailI.value,
-        password: passI.value
-      });
-      if (error) alert('Login failed: ' + error.message);
-      else showStorage();
-    };
+      document.getElementById('signInBtn').onclick = async () => {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: emailI.value,
+          password: passI.value
+        });
+        if (error) {
+          alert('Login failed: ' + error.message);
+        } else {
+          setTimeout(async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) showStorage();
+          }, 500);
+        }
+      };
 
-    document.getElementById('signOutBtn').onclick = async () => {
-      await supabase.auth.signOut();
-      storageBox.classList.add('hidden');
-      authBox.classList.remove('hidden');
-    };
+      document.getElementById('signOutBtn').onclick = async () => {
+        await supabase.auth.signOut();
+        storageBox.classList.add('hidden');
+        authBox.classList.remove('hidden');
+      };
 
-    document.getElementById('uploadBtn').onclick = async () => {
-      const userResponse = await supabase.auth.getUser();
-      const user = userResponse.data.user;
-      const file = fileI.files[0];
-      if (!file) return alert('Select a file first.');
+      document.getElementById('uploadBtn').onclick = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        const file = fileI.files[0];
+        if (!file) return alert('Select a file first.');
 
-      const path = `${user.id}/${Date.now()}-${file.name}`;
-      const upload = await supabase.storage.from('files').upload(path, file);
-      if (upload.error) return alert('Upload failed: ' + upload.error.message);
+        const path = `${user.id}/${Date.now()}-${file.name}`;
+        const upload = await supabase.storage.from('files').upload(path, file);
+        if (upload.error) return alert('Upload failed: ' + upload.error.message);
 
-      const { data: urlData } = supabase.storage.from('files').getPublicUrl(path);
-      const hash = generateHashId();
+        const { data: urlData } = supabase.storage.from('files').getPublicUrl(path);
+        const hash = generateHashId();
 
-      await supabase.from('files').insert([{
-        user_id: user.id,
-        filename: file.name,
-        storage_path: path,
-        public_url: urlData.publicUrl,
-        hash: hash
-      }]);
+        await supabase.from('files').insert([{
+          user_id: user.id,
+          filename: file.name,
+          storage_path: path,
+          public_url: urlData.publicUrl,
+          hash: hash
+        }]);
 
-      alert('Uploaded!');
-      listFiles();
-    };
+        alert('Uploaded!');
+        listFiles();
+      };
 
-    async function listFiles() {
-      const userResponse = await supabase.auth.getUser();
-      const user = userResponse.data.user;
-      const { data, error } = await supabase
-        .from('files')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      async function listFiles() {
+        const { data: { user } } = await supabase.auth.getUser();
+        const { data, error } = await supabase.from('files')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
 
-      fileList.innerHTML = '';
-      if (error || !data || data.length === 0) {
-        fileList.innerHTML = '<li>No files found.</li>';
-        return;
-      }
-
-      data.forEach(file => {
-        const ext = file.filename.split('.').pop().toLowerCase();
-        let preview = '';
-        if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
-          preview = `<img src="${file.public_url}">`;
-        } else if (['mp4', 'webm', 'ogg'].includes(ext)) {
-          preview = `<video controls src="${file.public_url}"></video>`;
+        fileList.innerHTML = '';
+        if (error || !data || data.length === 0) {
+          fileList.innerHTML = '<li>No files found.</li>';
+          return;
         }
 
-        const li = document.createElement('li');
-        li.className = 'file-item';
-        li.innerHTML = `
-          <strong>${file.filename}</strong><br>
-          <a href="${file.public_url}" target="_blank">Download</a> |
-          <a href="#${file.hash}"># Link</a>
-          <button onclick="deleteFile('${file.storage_path}')">Delete</button>
-          ${preview}
-        `;
-        fileList.appendChild(li);
+        data.forEach(file => {
+          const ext = file.filename.split('.').pop().toLowerCase();
+          let preview = '';
+          if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+            preview = `<img src="${file.public_url}">`;
+          } else if (['mp4', 'webm', 'ogg'].includes(ext)) {
+            preview = `<video controls src="${file.public_url}"></video>`;
+          }
+
+          const li = document.createElement('li');
+          li.className = 'file-item';
+          li.innerHTML = `
+            <strong>${file.filename}</strong><br>
+            <a href="${file.public_url}" target="_blank">Download</a> |
+            <a href="#${file.hash}"># Link</a>
+            <button onclick="deleteFile('${file.storage_path}')">Delete</button>
+            ${preview}
+          `;
+          fileList.appendChild(li);
+        });
+      }
+
+      window.deleteFile = async (path) => {
+        const { error } = await supabase.storage.from('files').remove([path]);
+        if (error) return alert('Delete failed: ' + error.message);
+        await supabase.from('files').delete().eq('storage_path', path);
+        alert('Removed!');
+        listFiles();
+      };
+
+      document.getElementById('themeToggle').onclick = () => {
+        document.body.classList.toggle('dark-mode');
+      };
+
+      // Auto-login on page load
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) showStorage();
       });
-    }
 
-    window.deleteFile = async (path) => {
-      const { error } = await supabase.storage.from('files').remove([path]);
-      if (error) return alert('Delete failed: ' + error.message);
-      await supabase.from('files').delete().eq('storage_path', path);
-      alert('Removed!');
-      listFiles();
-    };
-
-    document.getElementById('themeToggle').onclick = () => {
-      document.body.classList.toggle('dark-mode');
-    };
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) showStorage();
-    });
-
-    const hash = window.location.hash.slice(1);
-    if (hash) {
-      supabase
-        .from('files')
-        .select('*')
-        .eq('hash', hash)
-        .single()
-        .then(({ data, error }) => {
+      // Hash link logic
+      const hash = window.location.hash.slice(1);
+      if (hash) {
+        supabase.from('files').select('*').eq('hash', hash).single().then(({ data, error }) => {
           if (data) {
             alert(`File: ${data.filename}\nLink: ${data.public_url}`);
             window.open(data.public_url, '_blank');
@@ -232,7 +205,8 @@
             console.error(error);
           }
         });
-    }
+      }
+    });
   </script>
 </body>
 </html>
