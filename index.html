@@ -2,146 +2,209 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Cloud Storage</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>My CloudStorage</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background: #f9f9f9; }
-    input, button { padding: 8px; margin: 5px; }
-    #file-list img, #file-list video { max-width: 200px; max-height: 150px; margin: 10px 0; display: block; }
-    .file-item { background: white; padding: 10px; margin: 10px 0; border: 1px solid #ccc; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #eef2f5;
+      min-height: 100vh;
+      padding: 1rem;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    header h2 {
+      font-size: 1.25rem;
+      color: #4a90e2;
+    }
+    header button {
+      background: #e24a4a;
+      color: #fff;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    #uploader {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    #uploader input[type="file"] {
+      flex: 1;
+      padding: 0.5rem;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    #uploader button {
+      background: #50e3c2;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    #uploader button:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+    #file-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 0.75rem;
+    }
+    .file-item {
+      background: #fff;
+      border-radius: 8px;
+      padding: 0.75rem;
+      border: 1px solid #ddd;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .file-item img, .file-item video {
+      width: 100%;
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+    }
+    .file-item button {
+      margin-top: auto;
+      background: #e24a4a;
+      color: #fff;
+      border: none;
+      padding: 0.4rem 0.8rem;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
 
-<h2>Supabase Cloud Storage</h2>
-<p>Welcome, <span id="user-email"></span>! <button id="logoutBtn">Logout</button></p>
+  <header>
+    <h2>☁️ CloudStorage</h2>
+    <button id="logoutBtn">Logout</button>
+  </header>
 
-<input type="file" id="fileInput" />
-<button id="uploadBtn">Upload</button>
+  <div id="uploader">
+    <input type="file" id="fileInput" />
+    <button id="uploadBtn" disabled>Upload</button>
+  </div>
 
-<h3>Your Files</h3>
-<div id="file-list"></div>
+  <div id="file-list"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-<script>
-  const supabase = supabase.createClient(
-    "https://sgtfjntptdxgrcqkftn.supabase.co",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNndGZqbnRwdGR4Z3JjcXFrZnRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyNDE3NzksImV4cCI6MjA2NjgxNzc3OX0.6u77xHcSVwShF2YDtaPMuo9NIw035v8QczoNAqqDVVk"
-  );
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script>
+    const { createClient } = supabase;
+    const sb = createClient(
+      "https://sgtfjntptdxgrcqqkftn.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…"
+    );
 
-  const userEmailSpan = document.getElementById('user-email');
-  const logoutBtn = document.getElementById('logoutBtn');
-  const fileInput = document.getElementById('fileInput');
-  const uploadBtn = document.getElementById('uploadBtn');
-  const fileList = document.getElementById('file-list');
+    const fileInput = document.getElementById('fileInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const fileList = document.getElementById('file-list');
 
-  async function redirectIfNotLoggedIn() {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session || !session.user) {
-      window.location.href = 'https://githubuser102234.github.io/cloudstorage/login';
-      return false;
-    }
-    userEmailSpan.textContent = session.user.email;
-    return true;
-  }
+    // enable upload button only when a file is selected
+    fileInput.onchange = () => {
+      uploadBtn.disabled = !fileInput.files.length;
+    };
 
-  logoutBtn.onclick = async () => {
-    await supabase.auth.signOut();
-    window.location.href = 'https://githubuser102234.github.io/cloudstorage/login';
-  };
+    logoutBtn.onclick = async () => {
+      await sb.auth.signOut();
+      location.replace('/cloudstorage/login');
+    };
 
-  uploadBtn.onclick = async () => {
-    const file = fileInput.files[0];
-    if (!file) return alert('Please select a file');
-
-    const { data: { user } } = await supabase.auth.getUser();
-    const path = `${user.id}/${Date.now()}_${file.name}`;
-
-    const { error: uploadError } = await supabase.storage.from('uploads').upload(path, file);
-    if (uploadError) return alert('Upload error: ' + uploadError.message);
-
-    const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(path);
-
-    const { error: dbError } = await supabase.from('files').insert({
-      user_id: user.id,
-      filename: file.name,
-      url: publicUrl
-    });
-    if (dbError) return alert('DB insert error: ' + dbError.message);
-
-    fileInput.value = '';
-    loadFiles();
-  };
-
-  async function loadFiles() {
-    fileList.innerHTML = '';
-    const { data: { user } } = await supabase.auth.getUser();
-
-    const { data: files, error } = await supabase
-      .from('files')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-
-    if (error) return alert('Error loading files: ' + error.message);
-
-    if (!files.length) {
-      fileList.innerHTML = '<p>No files uploaded yet.</p>';
-      return;
+    async function redirectIfNotLoggedIn() {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) location.replace('/cloudstorage/login');
+      return session?.user;
     }
 
-    files.forEach(file => {
-      const div = document.createElement('div');
-      div.className = 'file-item';
+    async function uploadFile() {
+      const file = fileInput.files[0];
+      uploadBtn.disabled = true;
+      const user = (await sb.auth.getUser()).data.user;
+      const path = `${user.id}/${Date.now()}_${file.name}`;
 
-      const isImage = /\.(jpe?g|png|gif)$/i.test(file.url);
-      const isVideo = /\.(mp4|webm|ogg)$/i.test(file.url);
+      const { error: upErr } = await sb.storage.from('uploads').upload(path, file);
+      if (upErr) return alert('Upload error: '+upErr.message);
 
-      if (isImage) {
-        const img = document.createElement('img');
-        img.src = file.url;
-        div.appendChild(img);
-      } else if (isVideo) {
-        const vid = document.createElement('video');
-        vid.src = file.url;
-        vid.controls = true;
-        div.appendChild(vid);
-      } else {
-        const a = document.createElement('a');
-        a.href = file.url;
-        a.textContent = file.filename;
-        a.target = '_blank';
-        div.appendChild(a);
-      }
+      await sb.from('files').insert({
+        user_id: user.id,
+        filename: file.name,
+        url: sb.storage.from('uploads').getPublicUrl(path).data.publicUrl
+      });
 
-      const delBtn = document.createElement('button');
-      delBtn.textContent = 'Delete';
-      delBtn.onclick = async () => {
-        const path = file.url.split('/uploads/')[1];
-        const { error: storageErr } = await supabase.storage.from('uploads').remove([path]);
-        if (storageErr) return alert('Storage delete error: ' + storageErr.message);
-
-        const { error: dbErr } = await supabase.from('files').delete().eq('id', file.id);
-        if (dbErr) return alert('DB delete error: ' + dbErr.message);
-
-        loadFiles();
-      };
-
-      div.appendChild(delBtn);
-      fileList.appendChild(div);
-    });
-  }
-
-  (async () => {
-    if (await redirectIfNotLoggedIn()) {
+      fileInput.value = '';
       loadFiles();
     }
-  })();
 
-  supabase.auth.onAuthStateChange((_event, session) => {
-    if (!session) {
-      window.location.href = 'https://githubuser102234.github.io/cloudstorage/login';
+    async function loadFiles() {
+      fileList.innerHTML = '';
+      const user = (await sb.auth.getUser()).data.user;
+      const { data: files } = await sb
+        .from('files')
+        .select('id,filename,url')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (!files.length) {
+        fileList.innerHTML = '<p>No files yet.</p>';
+        return;
+      }
+
+      for (const f of files) {
+        const div = document.createElement('div');
+        div.className = 'file-item';
+
+        if (/\.(jpe?g|png|gif)$/i.test(f.url)) {
+          const img = document.createElement('img');
+          img.src = f.url;
+          div.appendChild(img);
+        } else if (/\.(mp4|webm)$/i.test(f.url)) {
+          const vid = document.createElement('video');
+          vid.src = f.url;
+          vid.controls = true;
+          div.appendChild(vid);
+        } else {
+          const link = document.createElement('a');
+          link.href = f.url;
+          link.textContent = f.filename;
+          link.target = '_blank';
+          div.appendChild(link);
+        }
+
+        const del = document.createElement('button');
+        del.textContent = 'Delete';
+        del.onclick = async () => {
+          await sb.storage.from('uploads').remove([f.url.split('/uploads/')[1]]);
+          await sb.from('files').delete().eq('id', f.id);
+          loadFiles();
+        };
+        div.appendChild(del);
+
+        fileList.appendChild(div);
+      }
     }
-  });
-</script>
+
+    (async () => {
+      await redirectIfNotLoggedIn();
+      loadFiles();
+    })();
+
+    sb.auth.onAuthStateChange((_e, s) => {
+      if (!s) location.replace('/cloudstorage/login');
+    });
+
+    uploadBtn.onclick = uploadFile;
+  </script>
 </body>
 </html>
