@@ -92,6 +92,8 @@
       margin-top: 15px;
       border-radius: 5px;
       display: none;
+      white-space: pre-wrap;
+      font-weight: bold;
     }
 
     @media (max-width: 600px) {
@@ -124,7 +126,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 <script>
   const supabase = supabase.createClient(
-    "https://sgtfjntptdxgrcqkftn.supabase.co",
+    "https://sgtfjntptdxgrcqqkftn.supabase.co",
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNndGZqbnRwdGR4Z3JjcXFrZnRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyNDE3NzksImV4cCI6MjA2NjgxNzc3OX0.6u77xHcSVwShF2YDtaPMuo9NIw035v8QczoNAqqDVVk"
   );
 
@@ -135,59 +137,89 @@
   const fileList = document.getElementById('file-list');
   const errorBox = document.getElementById('error');
 
+  // Show error message in UI & console
   const showError = (msg) => {
+    console.error('Error:', msg);
     errorBox.style.display = 'block';
     errorBox.textContent = msg;
   };
 
   logoutBtn.onclick = async () => {
-    await supabase.auth.signOut();
-    window.location.href = 'https://githubuser102234.github.io/cloudstorage/login';
+    try {
+      await supabase.auth.signOut();
+      window.location.href = 'https://githubuser102234.github.io/cloudstorage/login';
+    } catch (e) {
+      showError('Logout error: ' + e.message);
+    }
   };
 
   async function getUserOrRedirect() {
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) {
-      window.location.href = 'https://githubuser102234.github.io/cloudstorage/login';
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data.user) {
+        window.location.href = 'https://githubuser102234.github.io/cloudstorage/login';
+        return null;
+      }
+      return data.user;
+    } catch(e) {
+      showError('Auth error: ' + e.message);
       return null;
     }
-    return data.user;
   }
 
   uploadBtn.onclick = async () => {
     errorBox.style.display = 'none';
+    errorBox.textContent = '';
 
     const file = fileInput.files[0];
-    if (!file) return showError('Please select a file.');
+    if (!file) {
+      showError('Please select a file.');
+      return;
+    }
 
     const user = await getUserOrRedirect();
     if (!user) return;
 
     const path = `${user.id}/${Date.now()}_${file.name}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from('uploads')
-      .upload(path, file);
+    try {
+      console.log('Uploading file:', path);
 
-    if (uploadError) return showError('Upload error: ' + uploadError.message);
+      const { error: uploadError } = await supabase.storage
+        .from('uploads')
+        .upload(path, file);
 
-    const { data: pubUrlData, error: pubUrlErr } = supabase
-      .storage
-      .from('uploads')
-      .getPublicUrl(path);
+      if (uploadError) {
+        showError('Upload error: ' + uploadError.message);
+        return;
+      }
 
-    if (pubUrlErr) return showError('Public URL error: ' + pubUrlErr.message);
+      const { data: pubUrlData, error: pubUrlErr } = supabase.storage
+        .from('uploads')
+        .getPublicUrl(path);
 
-    const { error: dbError } = await supabase.from('files').insert({
-      user_id: user.id,
-      filename: file.name,
-      url: pubUrlData.publicUrl
-    });
+      if (pubUrlErr) {
+        showError('Public URL error: ' + pubUrlErr.message);
+        return;
+      }
 
-    if (dbError) return showError('Database insert error: ' + dbError.message);
+      const { error: dbError } = await supabase.from('files').insert({
+        user_id: user.id,
+        filename: file.name,
+        url: pubUrlData.publicUrl
+      });
 
-    fileInput.value = '';
-    loadFiles();
+      if (dbError) {
+        showError('Database insert error: ' + dbError.message);
+        return;
+      }
+
+      fileInput.value = '';
+      loadFiles();
+
+    } catch (e) {
+      showError('Unexpected error: ' + e.message);
+    }
   };
 
   async function loadFiles() {
@@ -197,59 +229,77 @@
     const user = await getUserOrRedirect();
     if (!user) return;
 
-    const { data: files, error } = await supabase
-      .from('files')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+    try {
+      const { data: files, error } = await supabase
+        .from('files')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
 
-    if (error) return showError('Error loading files: ' + error.message);
-
-    if (!files.length) {
-      fileList.innerHTML = '<p>No files uploaded yet.</p>';
-      return;
-    }
-
-    files.forEach(file => {
-      const div = document.createElement('div');
-      div.className = 'file-item';
-
-      const isImage = /\.(jpe?g|png|gif)$/i.test(file.url);
-      const isVideo = /\.(mp4|webm|ogg)$/i.test(file.url);
-
-      if (isImage) {
-        const img = document.createElement('img');
-        img.src = file.url;
-        div.appendChild(img);
-      } else if (isVideo) {
-        const vid = document.createElement('video');
-        vid.src = file.url;
-        vid.controls = true;
-        div.appendChild(vid);
-      } else {
-        const a = document.createElement('a');
-        a.href = file.url;
-        a.textContent = file.filename;
-        a.target = '_blank';
-        div.appendChild(a);
+      if (error) {
+        showError('Error loading files: ' + error.message);
+        return;
       }
 
-      const delBtn = document.createElement('button');
-      delBtn.textContent = 'Delete';
-      delBtn.onclick = async () => {
-        const path = file.url.split('/uploads/')[1];
-        const { error: storageErr } = await supabase.storage.from('uploads').remove([path]);
-        if (storageErr) return showError('Storage delete error: ' + storageErr.message);
+      if (!files.length) {
+        fileList.innerHTML = '<p>No files uploaded yet.</p>';
+        return;
+      }
 
-        const { error: dbErr } = await supabase.from('files').delete().eq('id', file.id);
-        if (dbErr) return showError('DB delete error: ' + dbErr.message);
+      files.forEach(file => {
+        const div = document.createElement('div');
+        div.className = 'file-item';
 
-        loadFiles();
-      };
+        const isImage = /\.(jpe?g|png|gif)$/i.test(file.url);
+        const isVideo = /\.(mp4|webm|ogg)$/i.test(file.url);
 
-      div.appendChild(delBtn);
-      fileList.appendChild(div);
-    });
+        if (isImage) {
+          const img = document.createElement('img');
+          img.src = file.url;
+          div.appendChild(img);
+        } else if (isVideo) {
+          const vid = document.createElement('video');
+          vid.src = file.url;
+          vid.controls = true;
+          div.appendChild(vid);
+        } else {
+          const a = document.createElement('a');
+          a.href = file.url;
+          a.textContent = file.filename;
+          a.target = '_blank';
+          div.appendChild(a);
+        }
+
+        const delBtn = document.createElement('button');
+        delBtn.textContent = 'Delete';
+        delBtn.onclick = async () => {
+          const path = file.url.split('/uploads/')[1];
+          try {
+            const { error: storageErr } = await supabase.storage.from('uploads').remove([path]);
+            if (storageErr) {
+              showError('Storage delete error: ' + storageErr.message);
+              return;
+            }
+
+            const { error: dbErr } = await supabase.from('files').delete().eq('id', file.id);
+            if (dbErr) {
+              showError('DB delete error: ' + dbErr.message);
+              return;
+            }
+
+            loadFiles();
+          } catch(e) {
+            showError('Unexpected delete error: ' + e.message);
+          }
+        };
+
+        div.appendChild(delBtn);
+        fileList.appendChild(div);
+      });
+
+    } catch(e) {
+      showError('Unexpected loading error: ' + e.message);
+    }
   }
 
   (async () => {
