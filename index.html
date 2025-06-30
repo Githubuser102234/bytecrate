@@ -137,168 +137,123 @@
   const fileList = document.getElementById('file-list');
   const errorBox = document.getElementById('error');
 
-  // Show error message in UI & console
   const showError = (msg) => {
-    console.error('Error:', msg);
+    console.error(msg);
     errorBox.style.display = 'block';
     errorBox.textContent = msg;
   };
 
   logoutBtn.onclick = async () => {
-    try {
-      await supabase.auth.signOut();
-      window.location.href = 'https://githubuser102234.github.io/cloudstorage/login';
-    } catch (e) {
-      showError('Logout error: ' + e.message);
-    }
+    await supabase.auth.signOut();
+    window.location.href = 'https://githubuser102234.github.io/cloudstorage/login';
   };
 
   async function getUserOrRedirect() {
-    try {
-      const { data, error } = await supabase.auth.getUser();
-      if (error || !data.user) {
-        window.location.href = 'https://githubuser102234.github.io/cloudstorage/login';
-        return null;
-      }
-      return data.user;
-    } catch(e) {
-      showError('Auth error: ' + e.message);
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error || !user) {
+      window.location.href = 'https://githubuser102234.github.io/cloudstorage/login';
       return null;
     }
+    return user;
   }
 
   uploadBtn.onclick = async () => {
     errorBox.style.display = 'none';
-    errorBox.textContent = '';
-
     const file = fileInput.files[0];
-    if (!file) {
-      showError('Please select a file.');
-      return;
-    }
+    if (!file) return showError("Please select a file.");
 
     const user = await getUserOrRedirect();
     if (!user) return;
 
     const path = `${user.id}/${Date.now()}_${file.name}`;
 
-    try {
-      console.log('Uploading file:', path);
+    const { error: uploadError } = await supabase.storage
+      .from('uploads')
+      .upload(path, file);
 
-      const { error: uploadError } = await supabase.storage
-        .from('uploads')
-        .upload(path, file);
-
-      if (uploadError) {
-        showError('Upload error: ' + uploadError.message);
-        return;
-      }
-
-      const { data: pubUrlData, error: pubUrlErr } = supabase.storage
-        .from('uploads')
-        .getPublicUrl(path);
-
-      if (pubUrlErr) {
-        showError('Public URL error: ' + pubUrlErr.message);
-        return;
-      }
-
-      const { error: dbError } = await supabase.from('files').insert({
-        user_id: user.id,
-        filename: file.name,
-        url: pubUrlData.publicUrl
-      });
-
-      if (dbError) {
-        showError('Database insert error: ' + dbError.message);
-        return;
-      }
-
-      fileInput.value = '';
-      loadFiles();
-
-    } catch (e) {
-      showError('Unexpected error: ' + e.message);
+    if (uploadError) {
+      return showError("Upload failed: " + uploadError.message);
     }
+
+    const { data: publicUrlData, error: urlError } = supabase
+      .storage
+      .from('uploads')
+      .getPublicUrl(path);
+
+    if (urlError) {
+      return showError("Public URL error: " + urlError.message);
+    }
+
+    const { error: insertError } = await supabase.from('files').insert({
+      user_id: user.id,
+      filename: file.name,
+      url: publicUrlData.publicUrl
+    });
+
+    if (insertError) {
+      return showError("Database insert failed: " + insertError.message);
+    }
+
+    fileInput.value = '';
+    loadFiles();
   };
 
   async function loadFiles() {
     fileList.innerHTML = '';
-    errorBox.style.display = 'none';
-
     const user = await getUserOrRedirect();
     if (!user) return;
 
-    try {
-      const { data: files, error } = await supabase
-        .from('files')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+    const { data: files, error } = await supabase
+      .from('files')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
 
-      if (error) {
-        showError('Error loading files: ' + error.message);
-        return;
+    if (error) return showError("Failed to load files: " + error.message);
+    if (!files.length) {
+      fileList.innerHTML = '<p>No files uploaded yet.</p>';
+      return;
+    }
+
+    for (const file of files) {
+      const div = document.createElement('div');
+      div.className = 'file-item';
+
+      const isImage = /\.(jpe?g|png|gif)$/i.test(file.url);
+      const isVideo = /\.(mp4|webm|ogg)$/i.test(file.url);
+
+      if (isImage) {
+        const img = document.createElement('img');
+        img.src = file.url;
+        div.appendChild(img);
+      } else if (isVideo) {
+        const vid = document.createElement('video');
+        vid.src = file.url;
+        vid.controls = true;
+        div.appendChild(vid);
+      } else {
+        const a = document.createElement('a');
+        a.href = file.url;
+        a.textContent = file.filename;
+        a.target = '_blank';
+        div.appendChild(a);
       }
 
-      if (!files.length) {
-        fileList.innerHTML = '<p>No files uploaded yet.</p>';
-        return;
-      }
+      const delBtn = document.createElement('button');
+      delBtn.textContent = 'Delete';
+      delBtn.onclick = async () => {
+        const filePath = file.url.split('/uploads/')[1];
+        const { error: delErr } = await supabase.storage.from('uploads').remove([`${user.id}/${filePath}`]);
+        if (delErr) return showError("Failed to delete file: " + delErr.message);
 
-      files.forEach(file => {
-        const div = document.createElement('div');
-        div.className = 'file-item';
+        const { error: dbErr } = await supabase.from('files').delete().eq('id', file.id);
+        if (dbErr) return showError("Failed to delete from DB: " + dbErr.message);
 
-        const isImage = /\.(jpe?g|png|gif)$/i.test(file.url);
-        const isVideo = /\.(mp4|webm|ogg)$/i.test(file.url);
+        loadFiles();
+      };
 
-        if (isImage) {
-          const img = document.createElement('img');
-          img.src = file.url;
-          div.appendChild(img);
-        } else if (isVideo) {
-          const vid = document.createElement('video');
-          vid.src = file.url;
-          vid.controls = true;
-          div.appendChild(vid);
-        } else {
-          const a = document.createElement('a');
-          a.href = file.url;
-          a.textContent = file.filename;
-          a.target = '_blank';
-          div.appendChild(a);
-        }
-
-        const delBtn = document.createElement('button');
-        delBtn.textContent = 'Delete';
-        delBtn.onclick = async () => {
-          const path = file.url.split('/uploads/')[1];
-          try {
-            const { error: storageErr } = await supabase.storage.from('uploads').remove([path]);
-            if (storageErr) {
-              showError('Storage delete error: ' + storageErr.message);
-              return;
-            }
-
-            const { error: dbErr } = await supabase.from('files').delete().eq('id', file.id);
-            if (dbErr) {
-              showError('DB delete error: ' + dbErr.message);
-              return;
-            }
-
-            loadFiles();
-          } catch(e) {
-            showError('Unexpected delete error: ' + e.message);
-          }
-        };
-
-        div.appendChild(delBtn);
-        fileList.appendChild(div);
-      });
-
-    } catch(e) {
-      showError('Unexpected loading error: ' + e.message);
+      div.appendChild(delBtn);
+      fileList.appendChild(div);
     }
   }
 
