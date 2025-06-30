@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Supabase Cloud Storage</title>
+  <title>Cloud Storage</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; background: #f9f9f9; }
     input, button { padding: 8px; margin: 5px; }
@@ -13,92 +13,43 @@
 <body>
 
 <h2>Supabase Cloud Storage</h2>
+<p>Welcome, <span id="user-email"></span>! <button id="logoutBtn">Logout</button></p>
 
-<div id="auth-section">
-  <input type="email" id="email" placeholder="Email" />
-  <input type="password" id="password" placeholder="Password" />
-  <button id="loginBtn">Login</button>
-  <button id="signupBtn">Sign Up</button>
-</div>
+<input type="file" id="fileInput" />
+<button id="uploadBtn">Upload</button>
 
-<div id="main-section" style="display:none;">
-  <p>Welcome, <span id="user-email"></span>! <button id="logoutBtn">Logout</button></p>
-  <input type="file" id="fileInput" />
-  <button id="uploadBtn">Upload</button>
+<h3>Your Files</h3>
+<div id="file-list"></div>
 
-  <h3>Your Files</h3>
-  <div id="file-list"></div>
-</div>
-
-<!-- Load Supabase SDK FIRST -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-
 <script>
-  // Create Supabase client AFTER SDK loaded
   const supabase = supabase.createClient(
     "https://sgtfjntptdxgrcqkftn.supabase.co",
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNndGZqbnRwdGR4Z3JjcXFrZnRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyNDE3NzksImV4cCI6MjA2NjgxNzc3OX0.6u77xHcSVwShF2YDtaPMuo9NIw035v8QczoNAqqDVVk"
   );
 
-  const authSection = document.getElementById('auth-section');
-  const mainSection = document.getElementById('main-section');
-  const emailInput = document.getElementById('email');
-  const passwordInput = document.getElementById('password');
-  const loginBtn = document.getElementById('loginBtn');
-  const signupBtn = document.getElementById('signupBtn');
-  const logoutBtn = document.getElementById('logoutBtn');
   const userEmailSpan = document.getElementById('user-email');
+  const logoutBtn = document.getElementById('logoutBtn');
   const fileInput = document.getElementById('fileInput');
   const uploadBtn = document.getElementById('uploadBtn');
   const fileList = document.getElementById('file-list');
 
-  async function checkSession() {
+  async function redirectIfNotLoggedIn() {
     const { data: { session } } = await supabase.auth.getSession();
-    if (session && session.user) {
-      showMain(session.user);
-      loadFiles();
-    } else {
-      showAuth();
+    if (!session || !session.user) {
+      window.location.href = 'https://githubuser102234.github.io/cloudstorage/login';
+      return false;
     }
+    userEmailSpan.textContent = session.user.email;
+    return true;
   }
 
-  function showMain(user) {
-    authSection.style.display = 'none';
-    mainSection.style.display = 'block';
-    userEmailSpan.textContent = user.email;
-  }
-
-  function showAuth() {
-    authSection.style.display = 'block';
-    mainSection.style.display = 'none';
-  }
-
-  loginBtn.addEventListener('click', async () => {
-    const email = emailInput.value.trim();
-    const password = passwordInput.value;
-    if (!email || !password) return alert('Please enter email and password');
-
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) alert('Login failed: ' + error.message);
-    else checkSession();
-  });
-
-  signupBtn.addEventListener('click', async () => {
-    const email = emailInput.value.trim();
-    const password = passwordInput.value;
-    if (!email || !password) return alert('Please enter email and password');
-
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (error) alert('Signup failed: ' + error.message);
-    else alert('Signup successful! Please check your email to confirm.');
-  });
-
-  logoutBtn.addEventListener('click', async () => {
+  logoutBtn.onclick = async () => {
     await supabase.auth.signOut();
-    showAuth();
-  });
+    window.location.href = 'https://githubuser102234.github.io/cloudstorage/login';
+  };
 
-  uploadBtn.addEventListener('click', async () => {
+  uploadBtn.onclick = async () => {
     const file = fileInput.files[0];
     if (!file) return alert('Please select a file');
 
@@ -110,7 +61,6 @@
 
     const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(path);
 
-    // Insert file metadata into DB
     const { error: dbError } = await supabase.from('files').insert({
       user_id: user.id,
       filename: file.name,
@@ -120,7 +70,7 @@
 
     fileInput.value = '';
     loadFiles();
-  });
+  };
 
   async function loadFiles() {
     fileList.innerHTML = '';
@@ -181,19 +131,17 @@
     });
   }
 
-  // Listen for auth state changes
-  supabase.auth.onAuthStateChange((_event, session) => {
-    if (session && session.user) {
-      showMain(session.user);
+  (async () => {
+    if (await redirectIfNotLoggedIn()) {
       loadFiles();
-    } else {
-      showAuth();
+    }
+  })();
+
+  supabase.auth.onAuthStateChange((_event, session) => {
+    if (!session) {
+      window.location.href = 'https://githubuser102234.github.io/cloudstorage/login';
     }
   });
-
-  // Initial check on page load
-  checkSession();
 </script>
-
 </body>
 </html>
