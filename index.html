@@ -1,274 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Cloud Storage</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <title>Coming Soon</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
-      font-family: Arial, sans-serif;
-      margin: 0;
       background: #f5f5f5;
-      padding: 20px;
-    }
-
-    h2 {
-      text-align: center;
-    }
-
-    .top-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      margin-bottom: 20px;
-    }
-
-    .file-upload {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: center;
+      text-align: center;
+      height: 100vh;
+      margin: 0;
+      padding: 20px;
     }
 
-    input[type="file"] {
-      margin: 10px 0;
+    h1 {
+      font-size: 2.5rem;
+      color: #333;
+      margin-bottom: 20px;
     }
 
-    #uploadBtn {
-      background: #4CAF50;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      font-size: 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: background 0.3s;
-    }
-
-    #uploadBtn:hover {
-      background: #45a049;
-    }
-
-    #logoutBtn {
-      background: #e53935;
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-
-    #file-list img,
-    #file-list video {
+    img {
       max-width: 100%;
-      max-height: 200px;
-      margin: 10px 0;
-      display: block;
-      border-radius: 6px;
-    }
-
-    .file-item {
-      background: white;
-      padding: 15px;
-      margin: 15px 0;
+      height: auto;
       border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.05);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
     }
 
-    .file-item button {
-      background: #f44336;
-      color: white;
-      border: none;
-      padding: 6px 12px;
-      margin-top: 8px;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    #error {
-      background: #ffdddd;
-      color: #b00020;
-      padding: 10px;
-      margin-top: 15px;
-      border-radius: 5px;
-      display: none;
-      white-space: pre-wrap;
-      font-weight: bold;
-    }
-
-    @media (max-width: 600px) {
-      .top-bar {
-        flex-direction: column;
-        align-items: flex-start;
+    @media (min-width: 600px) {
+      h1 {
+        font-size: 3rem;
       }
     }
   </style>
 </head>
 <body>
-
-<h2>Supabase Cloud Storage</h2>
-
-<div class="top-bar">
-  <p>Welcome, <span id="user-email">Loading...</span></p>
-  <button id="logoutBtn">Logout</button>
-</div>
-
-<div class="file-upload">
-  <input type="file" id="fileInput" />
-  <button id="uploadBtn">Upload</button>
-</div>
-
-<div id="error"></div>
-
-<h3>Your Files</h3>
-<div id="file-list"></div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-<script>
-  const supabase = supabase.createClient(
-    "https://sgtfjntptdxgrcqqkftn.supabase.co",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNndGZqbnRwdGR4Z3JjcXFrZnRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyNDE3NzksImV4cCI6MjA2NjgxNzc3OX0.6u77xHcSVwShF2YDtaPMuo9NIw035v8QczoNAqqDVVk"
-  );
-
-  const userEmailSpan = document.getElementById('user-email');
-  const logoutBtn = document.getElementById('logoutBtn');
-  const fileInput = document.getElementById('fileInput');
-  const uploadBtn = document.getElementById('uploadBtn');
-  const fileList = document.getElementById('file-list');
-  const errorBox = document.getElementById('error');
-
-  const showError = (msg) => {
-    console.error(msg);
-    errorBox.style.display = 'block';
-    errorBox.textContent = msg;
-  };
-
-  logoutBtn.onclick = async () => {
-    await supabase.auth.signOut();
-    window.location.href = 'https://githubuser102234.github.io/cloudstorage/login';
-  };
-
-  async function getUserOrRedirect() {
-    const { data: { user }, error } = await supabase.auth.getUser();
-    if (error || !user) {
-      window.location.href = 'https://githubuser102234.github.io/cloudstorage/login';
-      return null;
-    }
-    return user;
-  }
-
-  uploadBtn.onclick = async () => {
-    errorBox.style.display = 'none';
-    const file = fileInput.files[0];
-    if (!file) return showError("Please select a file.");
-
-    const user = await getUserOrRedirect();
-    if (!user) return;
-
-    const path = `${user.id}/${Date.now()}_${file.name}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('uploads')
-      .upload(path, file);
-
-    if (uploadError) {
-      return showError("Upload failed: " + uploadError.message);
-    }
-
-    const { data: publicUrlData, error: urlError } = supabase
-      .storage
-      .from('uploads')
-      .getPublicUrl(path);
-
-    if (urlError) {
-      return showError("Public URL error: " + urlError.message);
-    }
-
-    const { error: insertError } = await supabase.from('files').insert({
-      user_id: user.id,
-      filename: file.name,
-      url: publicUrlData.publicUrl
-    });
-
-    if (insertError) {
-      return showError("Database insert failed: " + insertError.message);
-    }
-
-    fileInput.value = '';
-    loadFiles();
-  };
-
-  async function loadFiles() {
-    fileList.innerHTML = '';
-    const user = await getUserOrRedirect();
-    if (!user) return;
-
-    const { data: files, error } = await supabase
-      .from('files')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-
-    if (error) return showError("Failed to load files: " + error.message);
-    if (!files.length) {
-      fileList.innerHTML = '<p>No files uploaded yet.</p>';
-      return;
-    }
-
-    for (const file of files) {
-      const div = document.createElement('div');
-      div.className = 'file-item';
-
-      const isImage = /\.(jpe?g|png|gif)$/i.test(file.url);
-      const isVideo = /\.(mp4|webm|ogg)$/i.test(file.url);
-
-      if (isImage) {
-        const img = document.createElement('img');
-        img.src = file.url;
-        div.appendChild(img);
-      } else if (isVideo) {
-        const vid = document.createElement('video');
-        vid.src = file.url;
-        vid.controls = true;
-        div.appendChild(vid);
-      } else {
-        const a = document.createElement('a');
-        a.href = file.url;
-        a.textContent = file.filename;
-        a.target = '_blank';
-        div.appendChild(a);
-      }
-
-      const delBtn = document.createElement('button');
-      delBtn.textContent = 'Delete';
-      delBtn.onclick = async () => {
-        const filePath = file.url.split('/uploads/')[1];
-        const { error: delErr } = await supabase.storage.from('uploads').remove([`${user.id}/${filePath}`]);
-        if (delErr) return showError("Failed to delete file: " + delErr.message);
-
-        const { error: dbErr } = await supabase.from('files').delete().eq('id', file.id);
-        if (dbErr) return showError("Failed to delete from DB: " + dbErr.message);
-
-        loadFiles();
-      };
-
-      div.appendChild(delBtn);
-      fileList.appendChild(div);
-    }
-  }
-
-  (async () => {
-    const user = await getUserOrRedirect();
-    if (!user) return;
-    userEmailSpan.textContent = user.email;
-    loadFiles();
-  })();
-
-  supabase.auth.onAuthStateChange((_event, session) => {
-    if (!session) {
-      window.location.href = 'https://githubuser102234.github.io/cloudstorage/login';
-    }
-  });
-</script>
+  <h1>We're currently crafting something exceptional.</h1>
+  <img src="https://raw.githubusercontent.com/Githubuser102234/cloudstorage/refs/heads/main/maincdn/0D03D348-6B89-487C-A9F5-91E971CCF787.jpeg" alt="Work in Progress">
 </body>
 </html>
