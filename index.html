@@ -10,16 +10,24 @@
       margin: 0;
       font-family: 'Segoe UI', sans-serif;
       background: #f0f2f5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
     }
-    .container {
-      max-width: 600px;
-      margin: 50px auto;
-      padding: 25px;
+
+    .container, .storage {
       background: #fff;
+      padding: 25px;
       border-radius: 12px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 500px;
+      box-sizing: border-box;
+      margin-top: 50px;
     }
-    h2 { text-align: center; margin-bottom: 20px; }
+
+    h2 { margin-bottom: 20px; text-align: center; }
     input, button {
       width: 100%;
       padding: 12px;
@@ -29,6 +37,7 @@
       font-size: 16px;
       box-sizing: border-box;
     }
+
     button {
       background: #0069ed;
       color: #fff;
@@ -36,48 +45,45 @@
       cursor: pointer;
       transition: background .3s;
     }
+
     button:hover { background: #0051bb; }
-    .hidden { display: none; }
-    #fileList {
+
+    .storage {
+      display: none;
+    }
+
+    .file-preview {
       margin-top: 20px;
     }
-    .file-entry {
-      padding: 10px;
-      background: #f7f7f7;
-      border: 1px solid #ddd;
-      margin-bottom: 8px;
-      border-radius: 6px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .file-entry a {
-      text-decoration: none;
-      color: #0069ed;
+
+    .file-preview a {
+      display: block;
+      margin: 5px 0;
       word-break: break-all;
     }
-    .file-entry button {
-      margin-left: 10px;
-      background: #e74c3c;
+
+    .logout-btn {
+      margin-top: 20px;
+      background: #ccc;
+      color: #333;
     }
   </style>
 </head>
 <body>
-
-  <div class="container" id="authBox">
+  <div class="container">
     <h2>Supabase Cloud Storage</h2>
-    <input type="email" id="email" placeholder="Email" />
-    <input type="password" id="password" placeholder="Password" />
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
     <button id="signUpBtn">Sign Up</button>
     <button id="signInBtn">Log In</button>
   </div>
 
-  <div class="container hidden" id="storageBox">
+  <div class="storage">
     <h2>Your Files</h2>
-    <input type="file" id="fileInput" />
+    <input type="file" id="fileInput">
     <button id="uploadBtn">Upload File</button>
-    <div id="fileList"></div>
-    <button id="logoutBtn" style="margin-top:20px;">Log Out</button>
+    <div class="file-preview" id="fileList"></div>
+    <button class="logout-btn" id="logoutBtn">Log Out</button>
   </div>
 
   <script>
@@ -86,103 +92,89 @@
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNndGZqbnRwdGR4Z3JjcXFrZnRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyNDE3NzksImV4cCI6MjA2NjgxNzc3OX0.6u77xHcSVwShF2YDtaPMuo9NIw035v8QczoNAqqDVVk'
     );
 
+    const container = document.querySelector('.container');
+    const storage = document.querySelector('.storage');
+    const fileInput = document.getElementById('fileInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const fileList = document.getElementById('fileList');
+    const logoutBtn = document.getElementById('logoutBtn');
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
     const signUpBtn = document.getElementById('signUpBtn');
     const signInBtn = document.getElementById('signInBtn');
-    const uploadBtn = document.getElementById('uploadBtn');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const fileInput = document.getElementById('fileInput');
-    const fileList = document.getElementById('fileList');
-    const authBox = document.getElementById('authBox');
-    const storageBox = document.getElementById('storageBox');
+
+    function showStorage() {
+      container.style.display = 'none';
+      storage.style.display = 'block';
+      loadFiles();
+    }
+
+    function showLogin() {
+      container.style.display = 'block';
+      storage.style.display = 'none';
+    }
+
+    async function loadFiles() {
+      fileList.innerHTML = '';
+      const { data, error } = await supabase.storage.from('files').list();
+      if (error) {
+        console.error(error.message);
+        return;
+      }
+      data.forEach(file => {
+        const link = document.createElement('a');
+        link.href = supabase.storage.from('files').getPublicUrl(file.name).data.publicUrl;
+        link.textContent = file.name;
+        link.target = '_blank';
+        fileList.appendChild(link);
+      });
+    }
 
     signUpBtn.addEventListener('click', async () => {
-      const { error } = await supabase.auth.signUp({
-        email: emailInput.value,
-        password: passwordInput.value
-      });
-      if (error) {
-        alert(error.message);
-      } else {
-        alert("Signed up successfully!");
-      }
+      const email = emailInput.value;
+      const password = passwordInput.value;
+      const { error } = await supabase.auth.signUp({ email, password });
+      if (error) return alert(error.message);
+      // Auto-login right after signup
+      const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+      if (loginError) return alert(loginError.message);
+      showStorage();
     });
 
     signInBtn.addEventListener('click', async () => {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: emailInput.value,
-        password: passwordInput.value
-      });
-      if (error) {
-        alert(error.message);
-      } else {
-        alert("Logged in successfully!");
-        // `onAuthStateChange` will auto-switch UI
-      }
-    });
-
-    logoutBtn.addEventListener('click', async () => {
-      await supabase.auth.signOut();
-      alert("Logged out");
+      const email = emailInput.value;
+      const password = passwordInput.value;
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return alert(error.message);
+      showStorage();
     });
 
     uploadBtn.addEventListener('click', async () => {
       const file = fileInput.files[0];
-      if (!file) return alert("Choose a file first!");
-      const user = (await supabase.auth.getUser()).data.user;
-      const path = `${user.id}/${Date.now()}-${file.name}`;
-      const { error } = await supabase.storage.from('files').upload(path, file);
+      if (!file) return alert("Please select a file");
+      const { data, error } = await supabase.storage.from('files').upload(file.name, file);
       if (error) return alert(error.message);
-      alert("File uploaded!");
-      await listFiles();
+      loadFiles();
     });
 
-    async function listFiles() {
-      const user = (await supabase.auth.getUser()).data.user;
-      const { data, error } = await supabase.storage.from('files').list(user.id + '/', { limit: 100 });
-      fileList.innerHTML = '';
-      if (error) return alert("Failed to list files: " + error.message);
-      for (const file of data) {
-        const { data: urlData } = await supabase.storage.from('files').getPublicUrl(`${user.id}/${file.name}`);
-        const div = document.createElement('div');
-        div.className = 'file-entry';
-        div.innerHTML = `
-          <a href="${urlData.publicUrl}" target="_blank">${file.name}</a>
-          <button onclick="deleteFile('${file.name}')">Delete</button>
-        `;
-        fileList.appendChild(div);
-      }
-    }
+    logoutBtn.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      showLogin();
+    });
 
-    async function deleteFile(fileName) {
-      const user = (await supabase.auth.getUser()).data.user;
-      const { error } = await supabase.storage.from('files').remove([`${user.id}/${fileName}`]);
-      if (error) return alert("Error deleting file: " + error.message);
-      alert("File deleted.");
-      await listFiles();
-    }
+    // Restore session on reload
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) showStorage();
+    });
 
-    function showStorage() {
-      authBox.classList.add('hidden');
-      storageBox.classList.remove('hidden');
-      listFiles();
-    }
-
+    // Optional: Listen for auth state changes
     supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
         showStorage();
       } else {
-        authBox.classList.remove('hidden');
-        storageBox.classList.add('hidden');
+        showLogin();
       }
     });
-
-    // On load, check if session exists
-    (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) showStorage();
-    })();
   </script>
 </body>
 </html>
