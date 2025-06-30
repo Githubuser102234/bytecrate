@@ -1,39 +1,114 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Login / Signup</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CloudStorage – Login / Signup</title>
+  <style>
+    /* Mobile-first reset */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #4a90e2, #50e3c2);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      color: #333;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 360px;
+      padding: 2rem;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+      text-align: center;
+      color: #4a90e2;
+    }
+    .field {
+      margin-bottom: 1rem;
+    }
+    input {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+    button {
+      width: 100%;
+      padding: 0.75rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      background: #4a90e2;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button + button {
+      margin-top: 0.5rem;
+      background: #50e3c2;
+    }
+    button:hover {
+      opacity: 0.9;
+    }
+    #msg {
+      margin-top: 1rem;
+      text-align: center;
+      font-size: 0.95rem;
+    }
+    #msg.error { color: #e24a4a; }
+    #msg.success { color: #4aae50; }
+  </style>
 </head>
 <body>
-  <h2>Login / Signup</h2>
-  <input id="email" placeholder="Email"><br>
-  <input id="password" type="password" placeholder="Password"><br><br>
-  <button onclick="login()">Login</button>
-  <button onclick="signup()">Signup</button>
-  <p id="msg"></p>
+
+  <div class="card">
+    <h1>Welcome</h1>
+    <div class="field"><input id="email" type="email" placeholder="Email" /></div>
+    <div class="field"><input id="password" type="password" placeholder="Password" /></div>
+    <button id="loginBtn">Log In</button>
+    <button id="signupBtn">Sign Up</button>
+    <div id="msg"></div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <script>
     const { createClient } = supabase;
     const supabaseClient = createClient(
       "https://sgtfjntptdxgrcqqkftn.supabase.co",
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNndGZqbnRwdGR4Z3JjcXFrZnRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyNDE3NzksImV4cCI6MjA2NjgxNzc3OX0.6u77xHcSVwShF2YDtaPMuo9NIw035v8QczoNAqqDVVk"
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…"
     );
 
-    async function login() {
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-      document.getElementById("msg").textContent = error ? `Login failed: ${error.message}` : "Logged in!";
-      if (!error) location.href = "/cloudstorage/";
-    }
+    const emailEl = document.getElementById('email');
+    const passEl  = document.getElementById('password');
+    const msgEl   = document.getElementById('msg');
+    const show = (t,c)=>{ msgEl.textContent=t; msgEl.className=c; };
 
-    async function signup() {
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-      const { error } = await supabaseClient.auth.signUp({ email, password });
-      document.getElementById("msg").textContent = error ? `Signup failed: ${error.message}` : "Check your email!";
-    }
+    document.getElementById('loginBtn').onclick = async () => {
+      show('', '');
+      const { error } = await supabaseClient.auth.signInWithPassword({
+        email: emailEl.value, password: passEl.value
+      });
+      if (error) show('Login failed: '+error.message, 'error');
+      else location.href = '/cloudstorage/';
+    };
+
+    document.getElementById('signupBtn').onclick = async () => {
+      show('', '');
+      const { error } = await supabaseClient.auth.signUp({
+        email: emailEl.value, password: passEl.value
+      });
+      if (error) show('Signup failed: '+error.message, 'error');
+      else show('Check your email to confirm.', 'success');
+    };
   </script>
 </body>
 </html>
