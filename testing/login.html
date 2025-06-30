@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Button Test</title>
+</head>
+<body>
+  <input type="email" id="email" placeholder="Email" />
+  <input type="password" id="password" placeholder="Password" />
+  <button id="loginBtn">Login</button>
+  <button id="signupBtn">Sign Up</button>
+  <div id="message"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script>
+    const loginBtn = document.getElementById('loginBtn');
+    const signupBtn = document.getElementById('signupBtn');
+    
+    loginBtn.onclick = () => {
+      alert("Login clicked!");
+      console.log("Login clicked!");
+    };
+
+    signupBtn.onclick = () => {
+      alert("Signup clicked!");
+      console.log("Signup clicked!");
+    };
+  </script>
+</body>
+</html>
