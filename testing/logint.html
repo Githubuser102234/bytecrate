@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Login / Signup Debug</title>
+</head>
+<body>
+
+<h2>Login or Signup</h2>
+<input type="email" id="email" placeholder="Email" />
+<input type="password" id="password" placeholder="Password" />
+<button id="loginBtn">Login</button>
+<button id="signupBtn">Sign Up</button>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<script>
+  console.log("Script loaded");
+  const supabase = supabase.createClient(
+    "https://sgtfjntptdxgrcqkftn.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNndGZqbnRwdGR4Z3JjcXFrZnRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyNDE3NzksImV4cCI6MjA2NjgxNzc3OX0.6u77xHcSVwShF2YDtaPMuo9NIw035v8QczoNAqqDVVk"
+  );
+
+  const emailInput = document.getElementById('email');
+  const passwordInput = document.getElementById('password');
+  const loginBtn = document.getElementById('loginBtn');
+  const signupBtn = document.getElementById('signupBtn');
+
+  loginBtn.onclick = async () => {
+    console.log("Login button clicked");
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+    if (!email || !password) return alert('Please enter email and password');
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      console.error("Login error:", error);
+      alert('Login failed: ' + error.message);
+    } else {
+      console.log("Login success:", data);
+      alert('Login successful!');
+      // redirect or do something
+    }
+  };
+
+  signupBtn.onclick = async () => {
+    console.log("Signup button clicked");
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+    if (!email || !password) return alert('Please enter email and password');
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) {
+      console.error("Signup error:", error);
+      alert('Signup failed: ' + error.message);
+    } else {
+      console.log("Signup success:", data);
+      alert('Signup successful! Please check your email.');
+    }
+  };
+</script>
+</body>
+</html>
