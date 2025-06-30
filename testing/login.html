@@ -2,29 +2,90 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Button Test</title>
+  <title>Login / Signup</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f4f4f4;
+    }
+    input, button {
+      padding: 10px;
+      margin: 5px 0;
+      display: block;
+      width: 300px;
+    }
+    #message {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    .error {
+      color: red;
+    }
+    .success {
+      color: green;
+    }
+  </style>
 </head>
 <body>
-  <input type="email" id="email" placeholder="Email" />
-  <input type="password" id="password" placeholder="Password" />
-  <button id="loginBtn">Login</button>
-  <button id="signupBtn">Sign Up</button>
-  <div id="message"></div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-  <script>
-    const loginBtn = document.getElementById('loginBtn');
-    const signupBtn = document.getElementById('signupBtn');
-    
-    loginBtn.onclick = () => {
-      alert("Login clicked!");
-      console.log("Login clicked!");
-    };
+<h2>Login / Signup</h2>
 
-    signupBtn.onclick = () => {
-      alert("Signup clicked!");
-      console.log("Signup clicked!");
-    };
-  </script>
+<input type="email" id="email" placeholder="Email" />
+<input type="password" id="password" placeholder="Password" />
+<button id="loginBtn">Login</button>
+<button id="signupBtn">Sign Up</button>
+<div id="message"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<script>
+  const supabase = supabase.createClient(
+    "https://sgtfjntptdxgrcqkftn.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNndGZqbnRwdGR4Z3JjcXFrZnRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyNDE3NzksImV4cCI6MjA2NjgxNzc3OX0.6u77xHcSVwShF2YDtaPMuo9NIw035v8QczoNAqqDVVk"
+  );
+
+  const emailInput = document.getElementById('email');
+  const passwordInput = document.getElementById('password');
+  const messageDiv = document.getElementById('message');
+
+  const loginBtn = document.getElementById('loginBtn');
+  const signupBtn = document.getElementById('signupBtn');
+
+  function showMessage(text, isError = false) {
+    messageDiv.textContent = text;
+    messageDiv.className = isError ? 'error' : 'success';
+  }
+
+  loginBtn.onclick = async () => {
+    showMessage('');
+    const email = emailInput.value;
+    const password = passwordInput.value;
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      showMessage("Login failed: " + error.message, true);
+    } else {
+      showMessage("Login successful!", false);
+      console.log("User session:", data);
+      // Optionally redirect after login:
+      // window.location.href = '/cloud.html';
+    }
+  };
+
+  signupBtn.onclick = async () => {
+    showMessage('');
+    const email = emailInput.value;
+    const password = passwordInput.value;
+    const { data, error } = await supabase.auth.signUp({ email, password });
+
+    if (error) {
+      showMessage("Signup failed: " + error.message, true);
+    } else {
+      showMessage("Signup successful! Check your email.", false);
+      console.log("Signed up user:", data);
+    }
+  };
+</script>
+
 </body>
 </html>
