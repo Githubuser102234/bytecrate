@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Fancy Supabase Uploader</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Supabase Auth + File Upload</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
     :root {
@@ -13,7 +13,6 @@
       --text: #ffffff;
       --subtext: #cccccc;
     }
-
     body {
       margin: 0;
       font-family: 'Segoe UI', sans-serif;
@@ -23,7 +22,6 @@
       justify-content: center;
       padding: 20px;
     }
-
     .container {
       max-width: 600px;
       width: 100%;
@@ -32,40 +30,34 @@
       border-radius: 12px;
       box-shadow: 0 0 10px rgba(0,0,0,0.4);
     }
-
     h2 {
       margin-top: 0;
       color: var(--accent);
       text-align: center;
     }
-
-    input[type="file"] {
+    input, button {
       width: 100%;
-      margin-top: 10px;
+      box-sizing: border-box;
       padding: 10px;
+      margin-top: 10px;
+      border-radius: 6px;
+      border: none;
+      font-size: 16px;
+    }
+    input {
       background: #2a2a2a;
       color: var(--text);
-      border: 1px solid #444;
-      border-radius: 6px;
     }
-
     button {
       background: var(--accent);
       color: white;
-      border: none;
-      padding: 10px 16px;
-      margin-top: 12px;
-      margin-right: 10px;
-      border-radius: 8px;
       font-weight: bold;
       cursor: pointer;
       transition: background 0.2s ease;
     }
-
     button:hover {
       background: #0284c7;
     }
-
     .file-item {
       margin-top: 20px;
       padding: 15px;
@@ -74,7 +66,6 @@
       word-break: break-word;
       position: relative;
     }
-
     .file-item img,
     .file-item video {
       width: 100%;
@@ -83,12 +74,10 @@
       margin-top: 10px;
       border-radius: 6px;
     }
-
     .file-item small a {
       color: var(--accent);
       word-break: break-all;
     }
-
     .delete-btn {
       position: absolute;
       top: 15px;
@@ -99,22 +88,26 @@
       font-size: 14px;
       margin: 0;
     }
-
     .delete-btn:hover {
       background: #c72e2e;
     }
-
+    #auth-container {
+      margin-bottom: 20px;
+    }
+    #logout-btn {
+      background: #e55353;
+      margin-top: 10px;
+    }
+    #logout-btn:hover {
+      background: #c72e2e;
+    }
     @media (max-width: 600px) {
       .container {
         padding: 15px;
       }
-
       button {
         width: 100%;
-        margin-right: 0;
-        margin-top: 10px;
       }
-
       .delete-btn {
         top: 10px;
         right: 10px;
@@ -126,81 +119,132 @@
 </head>
 <body>
   <div class="container">
-    <h2>📦 Fancy File Uploader</h2>
-    <input type="file" id="fileInput" />
-    <button onclick="uploadFile()">⬆ Upload</button>
-    <button onclick="clearFiles()">🗑 Clear Saved</button>
-    <div id="fileList"></div>
+    <h2>Supabase Auth + File Upload</h2>
+
+    <div id="auth-container">
+      <input type="email" id="email" placeholder="Email" />
+      <input type="password" id="password" placeholder="Password" />
+      <button id="login-btn">Log In</button>
+      <button id="signup-btn">Sign Up</button>
+      <p id="auth-message" style="color:#e55353; margin-top: 10px;"></p>
+    </div>
+
+    <div id="upload-container" style="display:none;">
+      <input type="file" id="fileInput" />
+      <button onclick="uploadFile()">⬆ Upload</button>
+      <button onclick="clearFiles()">🗑 Clear Saved</button>
+      <button id="logout-btn">Sign Out</button>
+      <div id="fileList"></div>
+    </div>
   </div>
 
-  <script>
-    const client = supabase.createClient(
-      'https://thenkydyibcxlcvdgifo.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRoZW5reWR5aWJjeGxjdmRnaWZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NzE2MDgsImV4cCI6MjA2NzA0NzYwOH0.fkms-yQx1ODCKczimbapEwxcHahYfb9En-vxX9GzfQo'
-    );
+<script>
+  const client = supabase.createClient(
+    'https://thenkydyibcxlcvdgifo.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRoZW5reWR5aWJjeGxjdmRnaWZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NzE2MDgsImV4cCI6MjA2NzA0NzYwOH0.fkms-yQx1ODCKczimbapEwxcHahYfb9En-vxX9GzfQo'
+  );
+  const BUCKET = 'testfiles';
 
-    const BUCKET = 'testfiles';
+  const authContainer = document.getElementById('auth-container');
+  const uploadContainer = document.getElementById('upload-container');
+  const authMessage = document.getElementById('auth-message');
 
-    async function uploadFile() {
-      const fileInput = document.getElementById('fileInput');
-      const file = fileInput.files[0];
-      if (!file) return alert("Choose a file first!");
+  document.getElementById('login-btn').addEventListener('click', async () => {
+    authMessage.textContent = '';
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    if (!email || !password) return authMessage.textContent = "Email and password required";
+    const { error } = await client.auth.signInWithPassword({ email, password });
+    if (error) authMessage.textContent = error.message;
+  });
 
-      const filePath = `${Date.now()}_${file.name}`;
-      const { data, error } = await client.storage.from(BUCKET).upload(filePath, file);
+  document.getElementById('signup-btn').addEventListener('click', async () => {
+    authMessage.textContent = '';
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    if (!email || !password) return authMessage.textContent = "Email and password required";
+    const { error } = await client.auth.signUp({ email, password });
+    if (error) authMessage.textContent = error.message;
+    else authMessage.style.color = '#0ea5e9';
+    authMessage.textContent = "Sign up successful! Please check your email to confirm.";
+  });
 
-      if (error) return alert("Upload failed: " + error.message);
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    await client.auth.signOut();
+  });
 
-      const { data: publicData } = client.storage.from(BUCKET).getPublicUrl(filePath);
-      saveFileLocally(file.name, publicData.publicUrl);
+  client.auth.onAuthStateChange((_event, session) => {
+    if (session && session.user) {
+      authContainer.style.display = 'none';
+      uploadContainer.style.display = 'block';
+      authMessage.textContent = '';
       displayFiles();
-      fileInput.value = ''; // clear file input
+    } else {
+      authContainer.style.display = 'block';
+      uploadContainer.style.display = 'none';
+      authMessage.style.color = '#e55353';
+      authMessage.textContent = '';
     }
+  });
 
-    function saveFileLocally(name, url) {
-      const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
-      files.unshift({ name, url });
-      localStorage.setItem('uploadedFiles', JSON.stringify(files));
-    }
+  async function uploadFile() {
+    const fileInput = document.getElementById('fileInput');
+    const file = fileInput.files[0];
+    if (!file) return alert("Choose a file first!");
 
-    function clearFiles() {
-      if (confirm("Clear all saved files?")) {
-        localStorage.removeItem('uploadedFiles');
-        displayFiles();
-      }
-    }
+    const filePath = `${Date.now()}_${file.name}`;
+    const { data, error } = await client.storage.from(BUCKET).upload(filePath, file);
 
-    function deleteFile(index) {
-      const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
-      files.splice(index, 1);
-      localStorage.setItem('uploadedFiles', JSON.stringify(files));
-      displayFiles();
-    }
+    if (error) return alert("Upload failed: " + error.message);
 
-    function displayFiles() {
-      const container = document.getElementById('fileList');
-      const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
-      container.innerHTML = '';
-
-      files.forEach((file, index) => {
-        const ext = file.name.split('.').pop().toLowerCase();
-        const isImage = ['jpg', 'jpeg', 'png', 'gif'].includes(ext);
-        const isVideo = ['mp4', 'webm', 'ogg'].includes(ext);
-        const preview = isImage ? `<img src="${file.url}">`
-                      : isVideo ? `<video controls src="${file.url}"></video>`
-                      : `<a href="${file.url}" target="_blank">Download File</a>`;
-        container.innerHTML += `
-          <div class="file-item">
-            <button class="delete-btn" onclick="deleteFile(${index})" title="Delete this file">🗑</button>
-            <strong>${file.name}</strong><br/>
-            ${preview}<br/>
-            <small><a href="${file.url}" target="_blank">${file.url}</a></small>
-          </div>
-        `;
-      });
-    }
-
+    const { data: publicData } = client.storage.from(BUCKET).getPublicUrl(filePath);
+    saveFileLocally(file.name, publicData.publicUrl);
     displayFiles();
-  </script>
+    fileInput.value = ''; // clear file input
+  }
+
+  function saveFileLocally(name, url) {
+    const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
+    files.unshift({ name, url });
+    localStorage.setItem('uploadedFiles', JSON.stringify(files));
+  }
+
+  function clearFiles() {
+    if (confirm("Clear all saved files?")) {
+      localStorage.removeItem('uploadedFiles');
+      displayFiles();
+    }
+  }
+
+  function deleteFile(index) {
+    const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
+    files.splice(index, 1);
+    localStorage.setItem('uploadedFiles', JSON.stringify(files));
+    displayFiles();
+  }
+
+  function displayFiles() {
+    const container = document.getElementById('fileList');
+    const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
+    container.innerHTML = '';
+
+    files.forEach((file, index) => {
+      const ext = file.name.split('.').pop().toLowerCase();
+      const isImage = ['jpg', 'jpeg', 'png', 'gif'].includes(ext);
+      const isVideo = ['mp4', 'webm', 'ogg'].includes(ext);
+      const preview = isImage ? `<img src="${file.url}">`
+                    : isVideo ? `<video controls src="${file.url}"></video>`
+                    : `<a href="${file.url}" target="_blank">Download File</a>`;
+      container.innerHTML += `
+        <div class="file-item">
+          <button class="delete-btn" onclick="deleteFile(${index})" title="Delete this file">🗑</button>
+          <strong>${file.name}</strong><br/>
+          ${preview}<br/>
+          <small><a href="${file.url}" target="_blank">${file.url}</a></small>
+        </div>
+      `;
+    });
+  }
+</script>
 </body>
 </html>
