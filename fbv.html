@@ -61,42 +61,42 @@
     <div id="feedbackList">Loading...</div>
   </div>
 
-  <script>
-    const PASSWORD = "24681012ear";
+<script>
+  const PASSWORD = "24681012ear";
 
-    const supabase = supabase.createClient(
-      'https://thenkydyibcxlcvdgifo.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRoZW5reWR5aWJjeGxjdmRnaWZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NzE2MDgsImV4cCI6MjA2NzA0NzYwOH0.fkms-yQx1ODCKczimbapEwxcHahYfb9En-vxX9GzfQo'
-    );
+  const client = supabase.createClient(
+    'https://thenkydyibcxlcvdgifo.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRoZW5reWR5aWJjeGxjdmRnaWZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NzE2MDgsImV4cCI6MjA2NzA0NzYwOH0.fkms-yQx1ODCKczimbapEwxcHahYfb9En-vxX9GzfQo'
+  );
 
-    function checkPassword() {
-      const input = document.getElementById("passwordInput").value;
-      if (input === PASSWORD) {
-        document.getElementById("authSection").style.display = "none";
-        document.getElementById("feedbackSection").style.display = "block";
-        loadFeedback();
-      } else {
-        alert("Incorrect password!");
-      }
+  function checkPassword() {
+    const input = document.getElementById("passwordInput").value;
+    if (input === PASSWORD) {
+      document.getElementById("authSection").style.display = "none";
+      document.getElementById("feedbackSection").style.display = "block";
+      loadFeedback();
+    } else {
+      alert("Incorrect password!");
+    }
+  }
+
+  async function loadFeedback() {
+    const { data, error } = await client.from('feedback').select('*').order('created_at', { ascending: false });
+
+    const list = document.getElementById("feedbackList");
+    if (error || !data) {
+      list.innerText = "Failed to load feedback.";
+      return;
     }
 
-    async function loadFeedback() {
-      const { data, error } = await supabase.from('feedback').select('*').order('created_at', { ascending: false });
-
-      const list = document.getElementById("feedbackList");
-      if (error || !data) {
-        list.innerText = "Failed to load feedback.";
-        return;
-      }
-
-      list.innerHTML = "";
-      data.forEach(item => {
-        const div = document.createElement("div");
-        div.className = "feedback-item";
-        div.innerHTML = `<div>${item.message}</div><div class="timestamp">${new Date(item.created_at).toLocaleString()}</div>`;
-        list.appendChild(div);
-      });
-    }
-  </script>
+    list.innerHTML = "";
+    data.forEach(item => {
+      const div = document.createElement("div");
+      div.className = "feedback-item";
+      div.innerHTML = `<div>${item.message}</div><div class="timestamp">${new Date(item.created_at).toLocaleString()}</div>`;
+      list.appendChild(div);
+    });
+  }
+</script>
 </body>
 </html>
