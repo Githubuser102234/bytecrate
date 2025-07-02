@@ -101,18 +101,6 @@
     #logout-btn:hover {
       background: #c72e2e;
     }
-    .rename-btn {
-      margin-left: 10px;
-      font-size: 12px;
-      padding: 2px 6px;
-      background: #4b5563;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    .rename-btn:hover {
-      background: #374151;
-    }
     @media (max-width: 600px) {
       .container {
         padding: 15px;
@@ -217,7 +205,7 @@
 
   function saveFileLocally(name, url) {
     const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
-    files.unshift({ name, url, displayName: name });
+    files.unshift({ name, url });
     localStorage.setItem('uploadedFiles', JSON.stringify(files));
   }
 
@@ -235,48 +223,28 @@
     displayFiles();
   }
 
-  function renameFile(index) {
-    const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
-    const newName = prompt("Enter a new name:", files[index].displayName);
-    if (newName && newName.trim()) {
-      files[index].displayName = newName.trim();
-      localStorage.setItem('uploadedFiles', JSON.stringify(files));
-      displayFiles();
-    }
-  }
-
   function displayFiles() {
-  const container = document.getElementById('fileList');
-  const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
-  container.innerHTML = '';
+    const container = document.getElementById('fileList');
+    const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
+    container.innerHTML = '';
 
-  files.forEach((file, index) => {
-    const ext = file.name.split('.').pop().toLowerCase();
-    const isImage = ['jpg', 'jpeg', 'png', 'gif'].includes(ext);
-    const isVideo = ['mp4', 'webm', 'ogg'].includes(ext);
-    const preview = isImage
-      ? `<img src="${file.url}">`
-      : isVideo
-      ? `<video controls src="${file.url}"></video>`
-      : `<a href="${file.url}" target="_blank">Download File</a>`;
-
-    container.innerHTML += `
-      <div class="file-item">
-        <div style="position: absolute; top: 15px; right: 15px; display: flex; gap: 6px;">
-          <button class="rename-btn" onclick="renameFile(${index})">✏️ Rename</button>
+    files.forEach((file, index) => {
+      const ext = file.name.split('.').pop().toLowerCase();
+      const isImage = ['jpg', 'jpeg', 'png', 'gif'].includes(ext);
+      const isVideo = ['mp4', 'webm', 'ogg'].includes(ext);
+      const preview = isImage ? `<img src="${file.url}">`
+                    : isVideo ? `<video controls src="${file.url}"></video>`
+                    : `<a href="${file.url}" target="_blank">Download File</a>`;
+      container.innerHTML += `
+        <div class="file-item">
           <button class="delete-btn" onclick="deleteFile(${index})" title="Delete this file">🗑</button>
+          <strong>${file.name}</strong><br/>
+          ${preview}<br/>
+          <small><a href="${file.url}" target="_blank">${file.url}</a></small>
         </div>
-        <div style="margin-top: 40px; font-size: 14px; color: var(--subtext);">
-          Nickname: <strong>${file.displayName}</strong>
-        </div>
-        ${preview}
-        <br/>
-        <small><a href="${file.url}" target="_blank">${file.url}</a></small>
-      </div>
-    `;
-  });
-}
-}
+      `;
+    });
+  }
 </script>
 </body>
 </html>
