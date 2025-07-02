@@ -72,6 +72,7 @@
       background: #2a2a2a;
       border-radius: 10px;
       word-break: break-word;
+      position: relative;
     }
 
     .file-item img,
@@ -88,6 +89,21 @@
       word-break: break-all;
     }
 
+    .delete-btn {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: #e55353;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 14px;
+      margin: 0;
+    }
+
+    .delete-btn:hover {
+      background: #c72e2e;
+    }
+
     @media (max-width: 600px) {
       .container {
         padding: 15px;
@@ -98,13 +114,20 @@
         margin-right: 0;
         margin-top: 10px;
       }
+
+      .delete-btn {
+        top: 10px;
+        right: 10px;
+        padding: 5px 8px;
+        font-size: 13px;
+      }
     }
   </style>
 </head>
 <body>
   <div class="container">
     <h2>📦 Fancy File Uploader</h2>
-    <input type="file" id="fileInput">
+    <input type="file" id="fileInput" />
     <button onclick="uploadFile()">⬆ Upload</button>
     <button onclick="clearFiles()">🗑 Clear Saved</button>
     <div id="fileList"></div>
@@ -131,6 +154,7 @@
       const { data: publicData } = client.storage.from(BUCKET).getPublicUrl(filePath);
       saveFileLocally(file.name, publicData.publicUrl);
       displayFiles();
+      fileInput.value = ''; // clear file input
     }
 
     function saveFileLocally(name, url) {
@@ -146,12 +170,19 @@
       }
     }
 
+    function deleteFile(index) {
+      const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
+      files.splice(index, 1);
+      localStorage.setItem('uploadedFiles', JSON.stringify(files));
+      displayFiles();
+    }
+
     function displayFiles() {
       const container = document.getElementById('fileList');
       const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
       container.innerHTML = '';
 
-      files.forEach(file => {
+      files.forEach((file, index) => {
         const ext = file.name.split('.').pop().toLowerCase();
         const isImage = ['jpg', 'jpeg', 'png', 'gif'].includes(ext);
         const isVideo = ['mp4', 'webm', 'ogg'].includes(ext);
@@ -160,6 +191,7 @@
                       : `<a href="${file.url}" target="_blank">Download File</a>`;
         container.innerHTML += `
           <div class="file-item">
+            <button class="delete-btn" onclick="deleteFile(${index})" title="Delete this file">🗑</button>
             <strong>${file.name}</strong><br/>
             ${preview}<br/>
             <small><a href="${file.url}" target="_blank">${file.url}</a></small>
