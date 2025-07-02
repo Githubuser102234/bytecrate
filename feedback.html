@@ -54,26 +54,26 @@
     <div class="msg" id="msg"></div>
   </div>
 
-  <script>
-    const supabase = supabase.createClient(
-      'https://thenkydyibcxlcvdgifo.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRoZW5reWR5aWJjeGxjdmRnaWZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NzE2MDgsImV4cCI6MjA2NzA0NzYwOH0.fkms-yQx1ODCKczimbapEwxcHahYfb9En-vxX9GzfQo'
-    );
+<script>
+  const client = supabase.createClient(
+    'https://thenkydyibcxlcvdgifo.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRoZW5reWR5aWJjeGxjdmRnaWZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NzE2MDgsImV4cCI6MjA2NzA0NzYwOH0.fkms-yQx1ODCKczimbapEwxcHahYfb9En-vxX9GzfQo'
+  );
 
-    async function submitFeedback() {
-      const text = document.getElementById('feedbackText').value.trim();
-      if (!text) return alert("Please enter feedback.");
+  async function submitFeedback() {
+    const text = document.getElementById('feedbackText').value.trim();
+    if (!text) return alert("Please enter feedback.");
 
-      const { error } = await supabase.from('feedback').insert({ message: text });
+    const { error } = await client.from('feedback').insert({ message: text });
 
-      if (error) {
-        alert("Error submitting feedback.");
-        console.error(error);
-      } else {
-        document.getElementById('feedbackText').value = "";
-        document.getElementById('msg').innerText = "Feedback submitted! ✅";
-      }
+    if (error) {
+      alert("Error submitting feedback.");
+      console.error(error);
+    } else {
+      document.getElementById('feedbackText').value = "";
+      document.getElementById('msg').innerText = "Feedback submitted! ✅";
     }
-  </script>
+  }
+</script>
 </body>
 </html>
