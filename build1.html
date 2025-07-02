@@ -246,28 +246,34 @@
   }
 
   function displayFiles() {
-    const container = document.getElementById('fileList');
-    const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
-    container.innerHTML = '';
+  const container = document.getElementById('fileList');
+  const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
+  container.innerHTML = '';
 
-    files.forEach((file, index) => {
-      const ext = file.name.split('.').pop().toLowerCase();
-      const isImage = ['jpg', 'jpeg', 'png', 'gif'].includes(ext);
-      const isVideo = ['mp4', 'webm', 'ogg'].includes(ext);
-      const preview = isImage ? `<img src="${file.url}">`
-                    : isVideo ? `<video controls src="${file.url}"></video>`
-                    : `<a href="${file.url}" target="_blank">Download File</a>`;
-      container.innerHTML += `
-        <div class="file-item">
-          <button class="delete-btn" onclick="deleteFile(${index})" title="Delete this file">🗑</button>
-          <strong>${file.displayName}</strong>
-          <button class="rename-btn" onclick="renameFile(${index})">✏️ Rename</button><br/>
-          ${preview}<br/>
-          <small><a href="${file.url}" target="_blank">${file.url}</a></small>
+  files.forEach((file, index) => {
+    const ext = file.name.split('.').pop().toLowerCase();
+    const isImage = ['jpg', 'jpeg', 'png', 'gif'].includes(ext);
+    const isVideo = ['mp4', 'webm', 'ogg'].includes(ext);
+    const preview = isImage
+      ? `<img src="${file.url}">`
+      : isVideo
+      ? `<video controls src="${file.url}"></video>`
+      : `<a href="${file.url}" target="_blank">Download File</a>`;
+
+    container.innerHTML += `
+      <div class="file-item">
+        <button class="delete-btn" onclick="deleteFile(${index})" title="Delete this file">🗑</button>
+        <button class="rename-btn" onclick="renameFile(${index})">✏️ Rename</button>
+        <div style="margin-top: 8px; font-size: 14px; color: var(--subtext);">
+          Nickname: <strong>${file.displayName}</strong>
         </div>
-      `;
-    });
-  }
+        ${preview}
+        <br/>
+        <small><a href="${file.url}" target="_blank">${file.url}</a></small>
+      </div>
+    `;
+  });
+}
 </script>
 </body>
 </html>
