@@ -9,3 +9,10 @@ Please note: This is an early access build. As such, you may encounter non-funct
 
 **The full content isn’t available to the public right now.**  
 To use the early access version, [click here](https://githubuser102234.github.io/cloudstorage/build1).
+
+---
+
+Feedback is now being accepted! To submit feedback,  
+<button onclick="window.open('https://githubuser102234.github.io/cloudstorage/feedback', '_blank')" style="cursor:pointer; background-color:#007bff; color:white; border:none; padding:10px 20px; border-radius:5px; font-size:16px;">
+  Click here
+</button>
