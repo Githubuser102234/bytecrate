@@ -101,6 +101,18 @@
     #logout-btn:hover {
       background: #c72e2e;
     }
+    .rename-btn {
+      margin-left: 10px;
+      font-size: 12px;
+      padding: 2px 6px;
+      background: #4b5563;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .rename-btn:hover {
+      background: #374151;
+    }
     @media (max-width: 600px) {
       .container {
         padding: 15px;
@@ -205,7 +217,7 @@
 
   function saveFileLocally(name, url) {
     const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
-    files.unshift({ name, url });
+    files.unshift({ name, url, displayName: name });
     localStorage.setItem('uploadedFiles', JSON.stringify(files));
   }
 
@@ -223,6 +235,16 @@
     displayFiles();
   }
 
+  function renameFile(index) {
+    const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
+    const newName = prompt("Enter a new name:", files[index].displayName);
+    if (newName && newName.trim()) {
+      files[index].displayName = newName.trim();
+      localStorage.setItem('uploadedFiles', JSON.stringify(files));
+      displayFiles();
+    }
+  }
+
   function displayFiles() {
     const container = document.getElementById('fileList');
     const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
@@ -238,7 +260,8 @@
       container.innerHTML += `
         <div class="file-item">
           <button class="delete-btn" onclick="deleteFile(${index})" title="Delete this file">🗑</button>
-          <strong>${file.name}</strong><br/>
+          <strong>${file.displayName}</strong>
+          <button class="rename-btn" onclick="renameFile(${index})">✏️ Rename</button><br/>
           ${preview}<br/>
           <small><a href="${file.url}" target="_blank">${file.url}</a></small>
         </div>
