@@ -1,27 +1,56 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Simple Cloud Storage</title>
+  <meta charset="UTF-8">
+  <title>Supabase Test Uploader</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
-    body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; }
-    input, button { margin: 10px 0; width: 100%; padding: 10px; }
-    .file-item { border: 1px solid #ddd; margin-top: 15px; padding: 10px; }
-    img, video { max-width: 100%; max-height: 200px; margin-top: 10px; }
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f0f0f0;
+    }
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+    }
+    .file-item {
+      margin-top: 15px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background: #fafafa;
+    }
+    img, video {
+      max-width: 100%;
+      margin-top: 5px;
+    }
+    input[type="file"] {
+      margin-top: 10px;
+    }
+    button {
+      margin-top: 10px;
+      margin-right: 10px;
+      padding: 8px 12px;
+    }
   </style>
 </head>
 <body>
-  <h2>📤 Test Cloud Uploader (No Auth)</h2>
+  <div class="container">
+    <h2>Supabase File Uploader (No Auth)</h2>
+    <input type="file" id="fileInput">
+    <br>
+    <button onclick="uploadFile()">Upload</button>
+    <button onclick="clearFiles()">Clear Saved Files</button>
 
-  <input type="file" id="fileInput" />
-  <button onclick="uploadFile()">Upload</button>
-
-  <h3>🗂️ Your Uploaded Files</h3>
-  <div id="fileList"></div>
+    <div id="fileList"></div>
+  </div>
 
   <script>
-    const supabase = supabase.createClient(
+    const client = supabase.createClient(
       'https://thenkydyibcxlcvdgifo.supabase.co',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRoZW5reWR5aWJjeGxjdmRnaWZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NzE2MDgsImV4cCI6MjA2NzA0NzYwOH0.fkms-yQx1ODCKczimbapEwxcHahYfb9En-vxX9GzfQo'
     );
@@ -31,15 +60,26 @@
     async function uploadFile() {
       const fileInput = document.getElementById('fileInput');
       const file = fileInput.files[0];
-      if (!file) return alert("Please choose a file.");
+      if (!file) {
+        alert("Please choose a file.");
+        return;
+      }
 
       const filePath = `${Date.now()}_${file.name}`;
-      const { error } = await supabase.storage.from(BUCKET).upload(filePath, file);
-      if (error) return alert("Upload failed: " + error.message);
+      console.log("Uploading:", filePath);
 
-      const { data: publicData } = supabase.storage.from(BUCKET).getPublicUrl(filePath);
+      const { data, error } = await client.storage.from(BUCKET).upload(filePath, file);
+
+      if (error) {
+        console.error("Upload error:", error);
+        alert("Upload failed: " + error.message);
+        return;
+      }
+
+      const { data: publicData } = client.storage.from(BUCKET).getPublicUrl(filePath);
       const url = publicData.publicUrl;
 
+      console.log("Uploaded file URL:", url);
       saveFileLocally(file.name, url);
       displayFiles();
     }
@@ -48,6 +88,11 @@
       const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
       files.unshift({ name, url });
       localStorage.setItem('uploadedFiles', JSON.stringify(files));
+    }
+
+    function clearFiles() {
+      localStorage.removeItem('uploadedFiles');
+      displayFiles();
     }
 
     function displayFiles() {
@@ -71,7 +116,7 @@
       });
     }
 
-    displayFiles(); // Load saved files on page load
+    displayFiles();
   </script>
 </body>
 </html>
