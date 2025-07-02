@@ -262,9 +262,11 @@
 
     container.innerHTML += `
       <div class="file-item">
-        <button class="delete-btn" onclick="deleteFile(${index})" title="Delete this file">🗑</button>
-        <button class="rename-btn" onclick="renameFile(${index})">✏️ Rename</button>
-        <div style="margin-top: 8px; font-size: 14px; color: var(--subtext);">
+        <div style="position: absolute; top: 15px; right: 15px; display: flex; gap: 6px;">
+          <button class="rename-btn" onclick="renameFile(${index})">✏️ Rename</button>
+          <button class="delete-btn" onclick="deleteFile(${index})" title="Delete this file">🗑</button>
+        </div>
+        <div style="margin-top: 40px; font-size: 14px; color: var(--subtext);">
           Nickname: <strong>${file.displayName}</strong>
         </div>
         ${preview}
@@ -273,6 +275,7 @@
       </div>
     `;
   });
+}
 }
 </script>
 </body>
