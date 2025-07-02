@@ -12,7 +12,4 @@ To use the early access version, [click here](https://githubuser102234.github.io
 
 ---
 
-Feedback is now being accepted! To submit feedback,  
-<button onclick="window.open('https://githubuser102234.github.io/cloudstorage/feedback', '_blank')" style="cursor:pointer; background-color:#007bff; color:white; border:none; padding:10px 20px; border-radius:5px; font-size:16px;">
-  Click here
-</button>
+Feedback is now being accepted! To submit feedback, [click here](https://githubuser102234.github.io/cloudstorage/feedback)
