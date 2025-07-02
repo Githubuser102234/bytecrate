@@ -1,51 +1,112 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Supabase Test Uploader</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Fancy Supabase Uploader</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-      background: #f0f0f0;
+    :root {
+      --bg: #121212;
+      --card: #1e1e1e;
+      --accent: #0ea5e9;
+      --text: #ffffff;
+      --subtext: #cccccc;
     }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+    }
+
     .container {
       max-width: 600px;
-      margin: auto;
-      background: white;
+      width: 100%;
+      background: var(--card);
       padding: 20px;
-      border-radius: 8px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.4);
     }
-    .file-item {
-      margin-top: 15px;
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      background: #fafafa;
+
+    h2 {
+      margin-top: 0;
+      color: var(--accent);
+      text-align: center;
     }
-    img, video {
-      max-width: 100%;
-      margin-top: 5px;
-    }
+
     input[type="file"] {
+      width: 100%;
       margin-top: 10px;
+      padding: 10px;
+      background: #2a2a2a;
+      color: var(--text);
+      border: 1px solid #444;
+      border-radius: 6px;
     }
+
     button {
-      margin-top: 10px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      margin-top: 12px;
       margin-right: 10px;
-      padding: 8px 12px;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    button:hover {
+      background: #0284c7;
+    }
+
+    .file-item {
+      margin-top: 20px;
+      padding: 15px;
+      background: #2a2a2a;
+      border-radius: 10px;
+      word-break: break-word;
+    }
+
+    .file-item img,
+    .file-item video {
+      width: 100%;
+      max-height: 300px;
+      object-fit: contain;
+      margin-top: 10px;
+      border-radius: 6px;
+    }
+
+    .file-item small a {
+      color: var(--accent);
+      word-break: break-all;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 15px;
+      }
+
+      button {
+        width: 100%;
+        margin-right: 0;
+        margin-top: 10px;
+      }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Supabase File Uploader (No Auth)</h2>
+    <h2>📦 Fancy File Uploader</h2>
     <input type="file" id="fileInput">
-    <br>
-    <button onclick="uploadFile()">Upload</button>
-    <button onclick="clearFiles()">Clear Saved Files</button>
-
+    <button onclick="uploadFile()">⬆ Upload</button>
+    <button onclick="clearFiles()">🗑 Clear Saved</button>
     <div id="fileList"></div>
   </div>
 
@@ -60,27 +121,15 @@
     async function uploadFile() {
       const fileInput = document.getElementById('fileInput');
       const file = fileInput.files[0];
-      if (!file) {
-        alert("Please choose a file.");
-        return;
-      }
+      if (!file) return alert("Choose a file first!");
 
       const filePath = `${Date.now()}_${file.name}`;
-      console.log("Uploading:", filePath);
-
       const { data, error } = await client.storage.from(BUCKET).upload(filePath, file);
 
-      if (error) {
-        console.error("Upload error:", error);
-        alert("Upload failed: " + error.message);
-        return;
-      }
+      if (error) return alert("Upload failed: " + error.message);
 
       const { data: publicData } = client.storage.from(BUCKET).getPublicUrl(filePath);
-      const url = publicData.publicUrl;
-
-      console.log("Uploaded file URL:", url);
-      saveFileLocally(file.name, url);
+      saveFileLocally(file.name, publicData.publicUrl);
       displayFiles();
     }
 
@@ -91,14 +140,17 @@
     }
 
     function clearFiles() {
-      localStorage.removeItem('uploadedFiles');
-      displayFiles();
+      if (confirm("Clear all saved files?")) {
+        localStorage.removeItem('uploadedFiles');
+        displayFiles();
+      }
     }
 
     function displayFiles() {
       const container = document.getElementById('fileList');
       const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
       container.innerHTML = '';
+
       files.forEach(file => {
         const ext = file.name.split('.').pop().toLowerCase();
         const isImage = ['jpg', 'jpeg', 'png', 'gif'].includes(ext);
