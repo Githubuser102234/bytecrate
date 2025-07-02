@@ -1,9 +1,9 @@
-# Early Access Notice
+# 🚧 Early Access Notice
 
 ![Warning](https://raw.githubusercontent.com/Githubuser102234/cloudstorage/refs/heads/main/maincdn/MagicEraser_250702_161705.png)
-<span style="color:red; font-weight:bold;">
-Please note: This is an early access build. As such, you may encounter non-functional features, significant bugs, or unexpected behavior. Additionally, all uploaded files during this period may be visible to the developer for testing and monitoring purposes. Please exercise caution and avoid uploading sensitive or personal content.
-</span>
+
+**⚠️ Please Note:**  
+This is an early access build. You may encounter incomplete features, bugs, or non-functional buttons. All uploaded content may be visible to the developer during this phase for testing purposes. Please avoid uploading private or sensitive files.
 
 ---
 
