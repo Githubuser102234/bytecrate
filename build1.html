@@ -91,6 +91,19 @@
     .delete-btn:hover {
       background: #c72e2e;
     }
+    .rename-btn {
+      position: absolute;
+      top: 45px;
+      right: 15px;
+      background: #0ea5e9;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 14px;
+      margin: 0;
+    }
+    .rename-btn:hover {
+      background: #0284c7;
+    }
     #auth-container {
       margin-bottom: 20px;
     }
@@ -108,11 +121,15 @@
       button {
         width: 100%;
       }
-      .delete-btn {
-        top: 10px;
+      .delete-btn, .rename-btn {
+        top: auto;
         right: 10px;
-        padding: 5px 8px;
-        font-size: 13px;
+        position: static;
+        margin-right: 5px;
+      }
+      .file-item button {
+        display: inline-block;
+        margin-top: 5px;
       }
     }
   </style>
@@ -165,8 +182,10 @@
     if (!email || !password) return authMessage.textContent = "Email and password required";
     const { error } = await client.auth.signUp({ email, password });
     if (error) authMessage.textContent = error.message;
-    else authMessage.style.color = '#0ea5e9';
-    authMessage.textContent = "Sign up successful! Please check your email to confirm.";
+    else {
+      authMessage.style.color = '#0ea5e9';
+      authMessage.textContent = "Sign up successful! Please check your email to confirm.";
+    }
   });
 
   document.getElementById('logout-btn').addEventListener('click', async () => {
@@ -194,18 +213,17 @@
 
     const filePath = `${Date.now()}_${file.name}`;
     const { data, error } = await client.storage.from(BUCKET).upload(filePath, file);
-
     if (error) return alert("Upload failed: " + error.message);
 
     const { data: publicData } = client.storage.from(BUCKET).getPublicUrl(filePath);
     saveFileLocally(file.name, publicData.publicUrl);
     displayFiles();
-    fileInput.value = ''; // clear file input
+    fileInput.value = '';
   }
 
-  function saveFileLocally(name, url) {
+  function saveFileLocally(name, url, nickname = '') {
     const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
-    files.unshift({ name, url });
+    files.unshift({ name, url, nickname });
     localStorage.setItem('uploadedFiles', JSON.stringify(files));
   }
 
@@ -223,6 +241,16 @@
     displayFiles();
   }
 
+  function renameFile(index) {
+    const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
+    const current = files[index].nickname || '';
+    const newNick = prompt("Enter a nickname for this file:", current);
+    if (newNick === null) return; // cancelled
+    files[index].nickname = newNick.trim();
+    localStorage.setItem('uploadedFiles', JSON.stringify(files));
+    displayFiles();
+  }
+
   function displayFiles() {
     const container = document.getElementById('fileList');
     const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
@@ -232,14 +260,20 @@
       const ext = file.name.split('.').pop().toLowerCase();
       const isImage = ['jpg', 'jpeg', 'png', 'gif'].includes(ext);
       const isVideo = ['mp4', 'webm', 'ogg'].includes(ext);
-      const preview = isImage ? `<img src="${file.url}">`
-                    : isVideo ? `<video controls src="${file.url}"></video>`
-                    : `<a href="${file.url}" target="_blank">Download File</a>`;
+      const preview = isImage
+        ? `<img src="${file.url}">`
+        : isVideo
+          ? `<video controls src="${file.url}"></video>`
+          : `<a href="${file.url}" target="_blank">Download File</a>`;
+
       container.innerHTML += `
         <div class="file-item">
           <button class="delete-btn" onclick="deleteFile(${index})" title="Delete this file">🗑</button>
-          <strong>${file.name}</strong><br/>
-          ${preview}<br/>
+          <button class="rename-btn" onclick="renameFile(${index})" title="Add/Update nickname">✏</button>
+          <strong>${file.name}</strong>
+          ${file.nickname ? `<div><em>Nickname: ${file.nickname}</em></div>` : ''}
+          ${preview}
+          <br/>
           <small><a href="${file.url}" target="_blank">${file.url}</a></small>
         </div>
       `;
