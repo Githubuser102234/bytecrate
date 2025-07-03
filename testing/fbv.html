@@ -106,10 +106,10 @@
   }
 
   async function loadFeedback() {
-    const { data, error } = await client
-      .from('feedback')
-      .select('id, message, created_at, user_id, user:auth.users(email)')
-      .order('created_at', { ascending: false });
+const { data, error } = await client
+  .from('feedback_with_email')
+  .select('*')
+  .order('created_at', { ascending: false });
 
     const list = document.getElementById("feedbackList");
     if (error || !data) {
