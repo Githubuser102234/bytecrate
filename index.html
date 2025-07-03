@@ -202,10 +202,6 @@
 document.getElementById('reset-password-btn').addEventListener('click', () => {
   alert("This feature is not available."); // Placeholder for future functionality
 });
-  if (!email) {
-    authMessage.textContent = 'Please enter your email above first.';
-    return;
-  }
 
   const { error } = await client.auth.resetPasswordForEmail(email, {
     redirectTo: window.location.href // Change this to your password reset page if needed
