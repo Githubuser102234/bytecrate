@@ -5,7 +5,7 @@
 ---
 
 **The beta version is now available!**  
-To use the beta version, [click here](https://githubuser102234.github.io/cloudstorage/build1).
+To use the beta version, [click here](https://githubuser102234.github.io/cloudstorage/).
 
 ---
 
