@@ -306,28 +306,37 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
     const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
     container.innerHTML = '';
 
-    files.forEach((file, index) => {
-      const ext = file.name.split('.').pop().toLowerCase();
-      const isImage = ['jpg', 'jpeg', 'png', 'gif'].includes(ext);
-      const isVideo = ['mp4', 'webm', 'ogg'].includes(ext);
-      const preview = isImage
-        ? `<img src="${file.url}">`
-        : isVideo
-          ? `<video controls src="${file.url}"></video>`
-          : `<a href="${file.url}" target="_blank">Download File</a>`;
+   data.forEach(file => {
+  const ext = file.name.split('.').pop().toLowerCase();
+  const isImage = ['jpg', 'jpeg', 'png', 'gif'].includes(ext);
+  const isVideo = ['mp4', 'webm', 'ogg'].includes(ext);
+  const preview = isImage
+    ? `<img src="${file.url}">`
+    : isVideo
+      ? `<video controls src="${file.url}"></video>`
+      : `<a href="${file.url}" target="_blank">Download File</a>`;
 
-      container.innerHTML += `
-        <div class="file-item">
-          <button class="delete-btn" onclick="deleteFile(${index})" title="Delete this file">🗑</button>
-          <button class="rename-btn" onclick="renameFile(${index})" title="Add/Update nickname">✏</button>
-          <strong>${file.name}</strong>
-          ${file.nickname ? `<div><em>Nickname: ${file.nickname}</em></div>` : ''}
-          ${preview}
-          <br/>
-          <small><a href="${file.url}" target="_blank">${file.url}</a></small>
-        </div>
-      `;
-    });
+  const publicLink = file.is_public && file.public_id
+    ? `<div><small>🔗 Public Link: <a href="#${file.public_id}" target="_blank">${location.origin + location.pathname + '#' + file.public_id}</a></small></div>`
+    : '';
+
+  const publicBtn = file.is_public
+    ? `<button onclick="makePrivate('${file.id}')">Make Private</button>`
+    : `<button onclick="makePublic('${file.id}')">Make Public</button>`;
+
+  container.innerHTML += `
+    <div class="file-item">
+      <button class="delete-btn" onclick="deleteFileById('${file.id}')">🗑</button>
+      <button class="rename-btn" onclick="renameFileDb('${file.id}')">✏</button>
+      <strong>${file.name}</strong>
+      ${file.nickname ? `<div><em>Nickname: ${file.nickname}</em></div>` : ''}
+      ${preview}
+      ${publicLink}
+      ${publicBtn}
+      <br/><small><a href="${file.url}" target="_blank">${file.url}</a></small>
+    </div>
+  `;
+});
   }
   async function displayFiles() {
   const user = (await client.auth.getUser()).data.user;
@@ -373,15 +382,13 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
     `;
   });
 }
-async function deleteFile(fileId) {
-  const confirmed = confirm("Are you sure you want to delete this file?");
-  if (!confirmed) return;
+async function deleteFileById(fileId) {
+  if (!confirm("Are you sure you want to delete this file?")) return;
 
   const { error } = await client.from('files').delete().eq('id', fileId);
-  if (error) {
-    console.error(error);
-    return alert("Delete failed.");
-  }
+  if (error) return alert("Failed to delete");
+  displayFiles();
+}
   displayFiles();
 }
 async function renameFile(fileId, currentNickname = '') {
@@ -398,6 +405,32 @@ async function renameFile(fileId, currentNickname = '') {
 document.getElementById('clear-saved-btn').addEventListener('click', () => {
   alert("This feature is not available.");
 });
+function generateRandomId(length = 6) {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let id = '';
+  for (let i = 0; i < length; i++) id += chars[Math.floor(Math.random() * chars.length)];
+  return id;
+}
+async function makePublic(fileId) {
+  const publicId = generateRandomId(8);
+  const { error } = await client.from('files').update({
+    is_public: true,
+    public_id: publicId
+  }).eq('id', fileId);
+
+  if (error) return alert('Failed to make public');
+  displayFiles();
+}
+
+async function makePrivate(fileId) {
+  const { error } = await client.from('files').update({
+    is_public: false,
+    public_id: null
+  }).eq('id', fileId);
+
+  if (error) return alert('Failed to make private');
+  displayFiles();
+}
 </script>
 </body>
 </html>
