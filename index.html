@@ -154,7 +154,7 @@
       <input type="password" id="password" placeholder="Password" />
       <button id="login-btn">Log In</button>
       <button id="signup-btn">Sign Up</button>
-      <button id="reset-password-btn" class="disabled-btn">Forgot Password?</button>
+      <button id="reset-password-btn" class="disabled-btn">Forgot Password?</button>>
       <p id="auth-message" style="color:#e55353; margin-top: 10px;"></p>
     </div>
 
@@ -200,7 +200,7 @@
     }
   });
 document.getElementById('reset-password-btn').addEventListener('click', () => {
-  alert("This feature is not available."); // Placeholder for future functionality
+  alert("Blank");
 });
 
   const { error } = await client.auth.resetPasswordForEmail(email, {
