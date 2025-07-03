@@ -137,6 +137,12 @@
         margin-top: 5px;
       }
     }
+    .disabled-btn {
+  background: #444 !important;
+  color: #888 !important;
+  cursor: not-allowed !important;
+  opacity: 0.6;
+}
   </style>
 </head>
 <body>
@@ -154,7 +160,7 @@
     <div id="upload-container" style="display:none;">
       <input type="file" id="fileInput" />
       <button onclick="uploadFile()">⬆ Upload</button>
-      <button onclick="clearFiles()">🗑 Clear Saved</button>
+      <button id="clear-saved-btn" class="disabled-btn">🗑 Clear Saved</button>
       <button id="logout-btn">Sign Out</button>
       <div id="fileList"></div>
     </div>
@@ -369,6 +375,9 @@ async function renameFile(fileId, currentNickname = '') {
   }
   displayFiles();
 }
+document.getElementById('clear-saved-btn').addEventListener('click', () => {
+  alert("This feature is not available.");
+});
 </script>
 </body>
 </html>
