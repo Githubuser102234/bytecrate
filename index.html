@@ -154,7 +154,7 @@
       <input type="password" id="password" placeholder="Password" />
       <button id="login-btn">Log In</button>
       <button id="signup-btn">Sign Up</button>
-      <button id="reset-password-btn" style="background:#444;">Forgot Password?</button>
+      <button id="reset-password-btn" class="disabled-btn">Forgot Password?</button>
       <p id="auth-message" style="color:#e55353; margin-top: 10px;"></p>
     </div>
 
@@ -199,10 +199,9 @@
       authMessage.textContent = "Sign up successful! Please check your email to confirm.";
     }
   });
-document.getElementById('reset-password-btn').addEventListener('click', async () => {
-  const email = document.getElementById('email').value;
-  authMessage.style.color = '#e55353';
-
+document.getElementById('reset-password-btn').addEventListener('click', () => {
+  alert(This feature is not available.); // Placeholder for future functionality
+});
   if (!email) {
     authMessage.textContent = 'Please enter your email above first.';
     return;
