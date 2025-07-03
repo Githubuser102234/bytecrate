@@ -44,6 +44,9 @@
       margin-top: 10px;
       color: green;
     }
+    .err {
+      color: red;
+    }
     #feedbackList {
       margin-top: 20px;
     }
@@ -122,23 +125,46 @@
     }
   }
 
+  async function isBanned(userId) {
+    const { data, error } = await client
+      .from('banned_users')
+      .select('id')
+      .eq('id', userId)
+      .single();
+
+    return !!data;
+  }
+
   async function submitFeedback() {
     const text = document.getElementById('feedbackText').value.trim();
+    const msgEl = document.getElementById('msg');
+    msgEl.innerText = "";
+    msgEl.classList.remove('err');
+
     if (!text) return alert("Please enter feedback.");
 
     const { data: { user } } = await client.auth.getUser();
     if (!user) return alert("You must be logged in.");
 
+    const banned = await isBanned(user.id);
+    if (banned) {
+      msgEl.innerText = "❌ You are banned from sending feedback.";
+      msgEl.classList.add('err');
+      return;
+    }
+
     const { error } = await client.from('feedback').insert({
       message: text,
-      user_id: user.id
+      user_id: user.id,
+      email: user.email
     });
 
     if (error) {
-      alert("Error submitting feedback.");
+      msgEl.innerText = "Error submitting feedback.";
+      msgEl.classList.add('err');
     } else {
       document.getElementById('feedbackText').value = "";
-      document.getElementById('msg').innerText = "Feedback submitted! ✅";
+      msgEl.innerText = "✅ Feedback submitted!";
       loadFeedbacks(user.id);
     }
   }
@@ -146,14 +172,14 @@
   async function loadFeedbacks(userId) {
     const { data, error } = await client
       .from('feedback')
-      .select('*')
+      .select('message, created_at')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
     const list = document.getElementById('feedbackList');
     list.innerHTML = '';
 
-    if (error) {
+    if (error || !data) {
       list.innerHTML = '<p>Error loading feedbacks.</p>';
       return;
     }
@@ -164,7 +190,10 @@
       data.forEach(item => {
         const div = document.createElement('div');
         div.className = 'feedback-item';
-        div.textContent = item.message;
+        div.innerHTML = `
+          <div>${item.message}</div>
+          <small>${new Date(item.created_at).toLocaleString()}</small>
+        `;
         list.appendChild(div);
       });
     }
