@@ -43,6 +43,9 @@
     .ban-btn {
       background: #6c757d;
     }
+    .unban-btn {
+      background: #28a745;
+    }
     .feedback-item {
       padding: 12px;
       border-bottom: 1px solid #ddd;
@@ -78,14 +81,27 @@
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRoZW5reWR5aWJjeGxjdmRnaWZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NzE2MDgsImV4cCI6MjA2NzA0NzYwOH0.fkms-yQx1ODCKczimbapEwxcHahYfb9En-vxX9GzfQo'
   );
 
-  function checkPassword() {
+  let bannedUsers = new Set();
+
+  async function checkPassword() {
     const input = document.getElementById("passwordInput").value;
     if (input === PASSWORD) {
       document.getElementById("authSection").style.display = "none";
       document.getElementById("feedbackSection").style.display = "block";
+      await loadBannedUsers();
       loadFeedback();
     } else {
       alert("Incorrect password!");
+    }
+  }
+
+  async function loadBannedUsers() {
+    const { data, error } = await client.from('banned_users').select('id');
+    if (error) {
+      console.error("Error loading banned users:", error);
+      bannedUsers = new Set();
+    } else {
+      bannedUsers = new Set(data.map(u => u.id));
     }
   }
 
@@ -107,13 +123,16 @@
       const div = document.createElement("div");
       div.className = "feedback-item";
       const email = item.user?.email || "Unknown";
+      const isBanned = bannedUsers.has(item.user_id);
 
       div.innerHTML = `
         <div class="email"><strong>Email:</strong> ${email}</div>
         <div>${item.message}</div>
         <div class="timestamp">${new Date(item.created_at).toLocaleString()}</div>
         <button class="delete-btn" onclick="deleteFeedback('${item.id}')">Delete Feedback</button>
-        <button class="ban-btn" onclick="banUser('${item.user_id}', '${email}')">Ban Submitter</button>
+        <button class="${isBanned ? 'unban-btn' : 'ban-btn'}" onclick="${isBanned ? `unbanUser('${item.user_id}', '${email}')` : `banUser('${item.user_id}', '${email}')`}">
+          ${isBanned ? 'Unban Submitter' : 'Ban Submitter'}
+        </button>
       `;
       list.appendChild(div);
     }
@@ -139,6 +158,22 @@
       console.error(error);
     } else {
       alert("User has been banned.");
+      bannedUsers.add(userId);
+      loadFeedback();
+    }
+  }
+
+  async function unbanUser(userId, email) {
+    if (!userId) return alert("No user ID found for this feedback.");
+    if (!confirm(`Unban user ${email}?`)) return;
+    const { error } = await client.from('banned_users').delete().eq('id', userId);
+    if (error) {
+      alert("Error unbanning user.");
+      console.error(error);
+    } else {
+      alert("User has been unbanned.");
+      bannedUsers.delete(userId);
+      loadFeedback();
     }
   }
 </script>
