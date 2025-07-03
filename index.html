@@ -212,20 +212,39 @@
   });
 
   async function uploadFile() {
-    const fileInput = document.getElementById('fileInput');
-    const file = fileInput.files[0];
-    if (!file) return alert("Choose a file first!");
+  const fileInput = document.getElementById('fileInput');
+  const file = fileInput.files[0];
+  if (!file) return alert("Choose a file first!");
 
-    const filePath = `${Date.now()}_${file.name}`;
-    const { data, error } = await client.storage.from(BUCKET).upload(filePath, file);
-    if (error) return alert("Upload failed: " + error.message);
+  const filePath = `${Date.now()}_${file.name}`;
+  const { data, error } = await client.storage.from(BUCKET).upload(filePath, file);
+  if (error) return alert("Upload failed: " + error.message);
 
-    const { data: publicData } = client.storage.from(BUCKET).getPublicUrl(filePath);
-    saveFileLocally(file.name, publicData.publicUrl);
-    displayFiles();
-    fileInput.value = '';
+  const { data: publicData } = client.storage.from(BUCKET).getPublicUrl(filePath);
+
+  const {
+    data: userData,
+    error: userError
+  } = await client.auth.getUser();
+  const userId = userData?.user?.id;
+
+  if (!userId) return alert("User not found");
+
+  const { error: insertError } = await client.from('files').insert({
+    user_id: userId,
+    name: file.name,
+    nickname: '',
+    url: publicData.publicUrl
+  });
+
+  if (insertError) {
+    console.error("Insert error:", insertError);
+    return alert("Could not save metadata");
   }
 
+  displayFiles();
+  fileInput.value = '';
+}
   function saveFileLocally(name, url, nickname = '') {
     const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
     files.unshift({ name, url, nickname });
