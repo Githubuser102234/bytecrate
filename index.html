@@ -1,45 +1,284 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Coming Soon</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Supabase Auth + File Upload</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
+    :root {
+      --bg: #121212;
+      --card: #1e1e1e;
+      --accent: #0ea5e9;
+      --text: #ffffff;
+      --subtext: #cccccc;
+    }
     body {
-      background: #f5f5f5;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      height: 100vh;
       margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
       padding: 20px;
     }
-
-    h1 {
-      font-size: 2.5rem;
-      color: #333;
+    .container {
+      max-width: 600px;
+      width: 100%;
+      background: var(--card);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.4);
+    }
+    h2 {
+      margin-top: 0;
+      color: var(--accent);
+      text-align: center;
+    }
+    input, button {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 6px;
+      border: none;
+      font-size: 16px;
+    }
+    input {
+      background: #2a2a2a;
+      color: var(--text);
+    }
+    button {
+      background: var(--accent);
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    button:hover {
+      background: #0284c7;
+    }
+    .file-item {
+      margin-top: 20px;
+      padding: 15px;
+      background: #2a2a2a;
+      border-radius: 10px;
+      word-break: break-word;
+      position: relative;
+    }
+    .file-item img,
+    .file-item video {
+      width: 100%;
+      max-height: 300px;
+      object-fit: contain;
+      margin-top: 10px;
+      border-radius: 6px;
+    }
+    .file-item small a {
+      color: var(--accent);
+      word-break: break-all;
+    }
+    .delete-btn {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: #e55353;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 14px;
+      margin: 0;
+    }
+    .delete-btn:hover {
+      background: #c72e2e;
+    }
+    .rename-btn {
+      position: absolute;
+      top: 45px;
+      right: 15px;
+      background: #0ea5e9;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 14px;
+      margin: 0;
+    }
+    .rename-btn:hover {
+      background: #0284c7;
+    }
+    #auth-container {
       margin-bottom: 20px;
     }
-
-    img {
-      max-width: 100%;
-      height: auto;
-      border-radius: 8px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    #logout-btn {
+      background: #e55353;
+      margin-top: 10px;
     }
-
-    @media (min-width: 600px) {
-      h1 {
-        font-size: 3rem;
+    #logout-btn:hover {
+      background: #c72e2e;
+    }
+    @media (max-width: 600px) {
+      .container {
+        padding: 15px;
+      }
+      button {
+        width: 100%;
+      }
+      .delete-btn, .rename-btn {
+        top: auto;
+        right: 10px;
+        position: static;
+        margin-right: 5px;
+      }
+      .file-item button {
+        display: inline-block;
+        margin-top: 5px;
       }
     }
   </style>
 </head>
 <body>
-  <h1>We're currently crafting something exceptional.</h1>
-  <img src="https://raw.githubusercontent.com/Githubuser102234/cloudstorage/refs/heads/main/maincdn/0D03D348-6B89-487C-A9F5-91E971CCF787.jpeg" alt="Work in Progress">
+  <div class="container">
+    <h2>Supabase Auth + File Upload</h2>
+
+    <div id="auth-container">
+      <input type="email" id="email" placeholder="Email" />
+      <input type="password" id="password" placeholder="Password" />
+      <button id="login-btn">Log In</button>
+      <button id="signup-btn">Sign Up</button>
+      <p id="auth-message" style="color:#e55353; margin-top: 10px;"></p>
+    </div>
+
+    <div id="upload-container" style="display:none;">
+      <input type="file" id="fileInput" />
+      <button onclick="uploadFile()">⬆ Upload</button>
+      <button onclick="clearFiles()">🗑 Clear Saved</button>
+      <button id="logout-btn">Sign Out</button>
+      <div id="fileList"></div>
+    </div>
+  </div>
+
+<script>
+  const client = supabase.createClient(
+    'https://thenkydyibcxlcvdgifo.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRoZW5reWR5aWJjeGxjdmRnaWZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NzE2MDgsImV4cCI6MjA2NzA0NzYwOH0.fkms-yQx1ODCKczimbapEwxcHahYfb9En-vxX9GzfQo'
+  );
+  const BUCKET = 'testfiles';
+
+  const authContainer = document.getElementById('auth-container');
+  const uploadContainer = document.getElementById('upload-container');
+  const authMessage = document.getElementById('auth-message');
+
+  document.getElementById('login-btn').addEventListener('click', async () => {
+    authMessage.textContent = '';
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    if (!email || !password) return authMessage.textContent = "Email and password required";
+    const { error } = await client.auth.signInWithPassword({ email, password });
+    if (error) authMessage.textContent = error.message;
+  });
+
+  document.getElementById('signup-btn').addEventListener('click', async () => {
+    authMessage.textContent = '';
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    if (!email || !password) return authMessage.textContent = "Email and password required";
+    const { error } = await client.auth.signUp({ email, password });
+    if (error) authMessage.textContent = error.message;
+    else {
+      authMessage.style.color = '#0ea5e9';
+      authMessage.textContent = "Sign up successful! Please check your email to confirm.";
+    }
+  });
+
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    await client.auth.signOut();
+  });
+
+  client.auth.onAuthStateChange((_event, session) => {
+    if (session && session.user) {
+      authContainer.style.display = 'none';
+      uploadContainer.style.display = 'block';
+      authMessage.textContent = '';
+      displayFiles();
+    } else {
+      authContainer.style.display = 'block';
+      uploadContainer.style.display = 'none';
+      authMessage.style.color = '#e55353';
+      authMessage.textContent = '';
+    }
+  });
+
+  async function uploadFile() {
+    const fileInput = document.getElementById('fileInput');
+    const file = fileInput.files[0];
+    if (!file) return alert("Choose a file first!");
+
+    const filePath = `${Date.now()}_${file.name}`;
+    const { data, error } = await client.storage.from(BUCKET).upload(filePath, file);
+    if (error) return alert("Upload failed: " + error.message);
+
+    const { data: publicData } = client.storage.from(BUCKET).getPublicUrl(filePath);
+    saveFileLocally(file.name, publicData.publicUrl);
+    displayFiles();
+    fileInput.value = '';
+  }
+
+  function saveFileLocally(name, url, nickname = '') {
+    const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
+    files.unshift({ name, url, nickname });
+    localStorage.setItem('uploadedFiles', JSON.stringify(files));
+  }
+
+  function clearFiles() {
+    if (confirm("Clear all saved files?")) {
+      localStorage.removeItem('uploadedFiles');
+      displayFiles();
+    }
+  }
+
+  function deleteFile(index) {
+    const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
+    files.splice(index, 1);
+    localStorage.setItem('uploadedFiles', JSON.stringify(files));
+    displayFiles();
+  }
+
+  function renameFile(index) {
+    const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
+    const current = files[index].nickname || '';
+    const newNick = prompt("Enter a nickname for this file:", current);
+    if (newNick === null) return; // cancelled
+    files[index].nickname = newNick.trim();
+    localStorage.setItem('uploadedFiles', JSON.stringify(files));
+    displayFiles();
+  }
+
+  function displayFiles() {
+    const container = document.getElementById('fileList');
+    const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
+    container.innerHTML = '';
+
+    files.forEach((file, index) => {
+      const ext = file.name.split('.').pop().toLowerCase();
+      const isImage = ['jpg', 'jpeg', 'png', 'gif'].includes(ext);
+      const isVideo = ['mp4', 'webm', 'ogg'].includes(ext);
+      const preview = isImage
+        ? `<img src="${file.url}">`
+        : isVideo
+          ? `<video controls src="${file.url}"></video>`
+          : `<a href="${file.url}" target="_blank">Download File</a>`;
+
+      container.innerHTML += `
+        <div class="file-item">
+          <button class="delete-btn" onclick="deleteFile(${index})" title="Delete this file">🗑</button>
+          <button class="rename-btn" onclick="renameFile(${index})" title="Add/Update nickname">✏</button>
+          <strong>${file.name}</strong>
+          ${file.nickname ? `<div><em>Nickname: ${file.nickname}</em></div>` : ''}
+          ${preview}
+          <br/>
+          <small><a href="${file.url}" target="_blank">${file.url}</a></small>
+        </div>
+      `;
+    });
+  }
+</script>
 </body>
 </html>
