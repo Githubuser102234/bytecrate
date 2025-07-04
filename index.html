@@ -186,7 +186,8 @@
     <div id="upload-container" style="display:none;">
       <input type="text" id="folderNameInput" placeholder="New folder name" />
       <button onclick="createFolder()">➕ Create Folder</button>
-      <hr> <input type="file" id="fileInput" />
+      <hr>
+      <input type="file" id="fileInput" />
       <button onclick="uploadFile()">⬆ Upload</button>
       <button id="clear-saved-btn" class="disabled-btn">🗑 Clear Saved</button>
       <button id="logout-btn">Sign Out</button>
@@ -196,7 +197,8 @@
           <button id="back-btn" class="back-btn" style="display:none;">⬅ Back</button>
       </div>
 
-      <div id="folderList"></div> <div id="fileList"></div>
+      <div id="folderList"></div>
+      <div id="fileList"></div>
     </div>
   </div>
 
@@ -211,11 +213,26 @@
   const uploadContainer = document.getElementById('upload-container');
   const authMessage = document.getElementById('auth-message');
   const folderListDiv = document.getElementById('folderList'); // Get the new folder list div
+  const fileListDiv = document.getElementById('fileList'); // Get the file list div
   const currentPathDisplay = document.getElementById('currentPathDisplay');
   const backButton = document.getElementById('back-btn');
 
   let currentFolderId = null; // To keep track of the current folder
   let currentFolderPath = []; // To keep track of the path for display
+
+  document.addEventListener('DOMContentLoaded', () => {
+      // Check session on load to determine initial state
+      client.auth.getSession().then(({ data: { session } }) => {
+          if (session) {
+              authContainer.style.display = 'none';
+              uploadContainer.style.display = 'block';
+              displayContent();
+          } else {
+              authContainer.style.display = 'block';
+              uploadContainer.style.display = 'none';
+          }
+      });
+  });
 
   document.getElementById('login-btn').addEventListener('click', async () => {
     authMessage.textContent = '';
@@ -277,49 +294,86 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
       authMessage.textContent = '';
       currentFolderId = null;
       currentFolderPath = [];
+      folderListDiv.innerHTML = ''; // Clear content on logout
+      fileListDiv.innerHTML = ''; // Clear content on logout
+      updatePathDisplay(); // Update path display on logout
     }
   });
 
   async function uploadFile() {
-  const fileInput = document.getElementById('fileInput');
-  const file = fileInput.files[0];
-  if (!file) return alert("Choose a file first!");
+    const fileInput = document.getElementById('fileInput');
+    const file = fileInput.files[0];
+    if (!file) return alert("Choose a file first!");
 
-  const filePath = currentFolderId ? `${currentFolderId}/${Date.now()}_${file.name}` : `${Date.now()}_${file.name}`;
-  const { data, error } = await client.storage.from(BUCKET).upload(filePath, file);
-  if (error) return alert("Upload failed: " + error.message);
+    const user = (await client.auth.getUser()).data.user;
+    if (!user) return alert("User not authenticated. Please log in.");
 
-  const { data: publicData } = client.storage.from(BUCKET).getPublicUrl(filePath);
+    // Construct the storage path including the current folder ID if applicable
+    const storagePathPrefix = currentFolderId ? `${user.id}/${currentFolderId}/` : `${user.id}/`; // User-specific root folder then current folder
+    const filePathInStorage = `${storagePathPrefix}${Date.now()}_${file.name}`;
 
-  const {
-    data: userData,
-    error: userError
-  } = await client.auth.getUser();
-  const userId = userData?.user?.id;
 
-  if (!userId) return alert("User not found");
+    // Upload to Supabase Storage
+    const { data: uploadData, error: uploadError } = await client.storage.from(BUCKET).upload(filePathInStorage, file);
+    if (uploadError) {
+        console.error("Upload failed:", uploadError);
+        return alert("Upload failed: " + uploadError.message);
+    }
 
-  const { error: insertError } = await client.from('files').insert({
-    user_id: userId,
-    name: file.name,
-    nickname: '',
-    url: publicData.publicUrl,
-    folder_id: currentFolderId // Assign current folder ID
-  });
+    // Get public URL
+    const { data: publicData } = client.storage.from(BUCKET).getPublicUrl(filePathInStorage);
+    if (!publicData || !publicData.publicUrl) {
+        console.error("Could not get public URL for:", filePathInStorage);
+        return alert("Failed to get public URL after upload.");
+    }
 
-  if (insertError) {
-    console.error("Insert error:", insertError);
-    return alert("Could not save metadata");
+    // Insert file metadata into 'files' table
+    const { error: insertError } = await client.from('files').insert({
+      user_id: user.id,
+      name: file.name,
+      nickname: '',
+      url: publicData.publicUrl,
+      folder_id: currentFolderId, // Assign current folder ID
+      storage_path: filePathInStorage // Store the full storage path for deletion
+    });
+
+    if (insertError) {
+      console.error("Insert error:", insertError);
+      // Attempt to delete from storage if metadata insertion fails
+      await client.storage.from(BUCKET).remove([filePathInStorage]);
+      return alert("Could not save file metadata. File upload cancelled.");
+    }
+
+    displayContent(); // Refresh content
+    fileInput.value = '';
   }
 
-  displayContent(); // Refresh content
-  fileInput.value = '';
-}
-
   async function displayContent() {
+    // Clear previous content before loading new
+    folderListDiv.innerHTML = '';
+    fileListDiv.innerHTML = '';
+
+    // Show a loading message
+    folderListDiv.innerHTML = '<p>Loading content...</p>';
+    fileListDiv.innerHTML = '';
+
     await displayFolders();
     await displayFiles();
     updatePathDisplay();
+
+    // Remove loading message if content is loaded
+    // Check if both are empty after trying to load, then show 'No content' message
+    const hasFolders = folderListDiv.querySelector('.folder-item');
+    const hasFiles = fileListDiv.querySelector('.file-item');
+
+    if (!hasFolders && !hasFiles) {
+        folderListDiv.innerHTML = '<p>No folders or files here yet.</p>';
+        fileListDiv.innerHTML = ''; // Ensure file list is empty
+    } else if (!hasFolders) {
+        folderListDiv.innerHTML = ''; // Clear if only files are loaded
+    } else if (!hasFiles) {
+        fileListDiv.innerHTML = ''; // Clear if only folders are loaded
+    }
   }
 
   async function displayFolders() {
@@ -329,22 +383,26 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
       return;
     }
 
-    const { data, error } = await client
+    let query = client
       .from('folders')
       .select('*')
-      .eq('user_id', user.id)
-      .is('parent_id', currentFolderId) // Filter by currentFolderId
-      .order('name', { ascending: true });
+      .eq('user_id', user.id);
 
-    folderListDiv.innerHTML = '';
-
-    if (error) {
-      console.error(error);
-      return alert("Failed to load folders.");
+    // Corrected logic for currentFolderId
+    if (currentFolderId) {
+        query = query.eq('parent_id', currentFolderId);
+    } else {
+        query = query.is('parent_id', null);
     }
 
-    if (!data.length && !document.getElementById('fileList').children.length) {
-      folderListDiv.innerHTML = '<p>No folders or files here yet.</p>';
+    const { data, error } = await query.order('name', { ascending: true });
+
+    folderListDiv.innerHTML = ''; // Clear before adding items
+
+    if (error) {
+      console.error("Error loading folders:", error);
+      folderListDiv.innerHTML = '<p style="color:#e55353;">Failed to load folders: ' + error.message + '</p>';
+      return;
     }
 
     data.forEach((folder) => {
@@ -378,9 +436,9 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
 
     if (error) {
       if (error.code === '23505') { // Unique violation error code
-        return alert("A folder with this name already exists here.");
+        return alert("A folder with this name already exists in this location.");
       }
-      console.error(error);
+      console.error("Error creating folder:", error);
       return alert("Failed to create folder: " + error.message);
     }
 
@@ -400,7 +458,7 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
       if (error.code === '23505') {
         return alert("A folder with this name already exists in this location.");
       }
-      console.error(error);
+      console.error("Error renaming folder:", error);
       return alert("Failed to rename folder.");
     }
     // Update path if the renamed folder is in the current path
@@ -419,36 +477,46 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
     if (!user) return alert("User not authenticated.");
 
     try {
-        // First, delete all files within this folder and its subfolders
-        const { data: filesToDelete, error: filesError } = await client
+        // Step 1: Recursively find and delete all files within this folder and its subfolders
+        // This is simplified. For a true recursive delete from storage, you'd need to iterate
+        // through subfolders as well. For now, we rely on the `storage_path` containing folder IDs.
+        // A better approach for deep deletion might involve a Supabase Function/Trigger.
+
+        // Get files directly in this folder
+        const { data: directFiles, error: directFilesError } = await client
             .from('files')
-            .select('id, name')
+            .select('id, storage_path')
             .eq('user_id', user.id)
-            .ilike('path', `%${folderId}%`); // Assuming you store path in storage, or recursively delete
+            .eq('folder_id', folderId); // Only direct children
 
-        // Note: For actual storage files, you'd need to list and delete from the Supabase Storage bucket as well.
-        // This example only deletes metadata from the 'files' table.
-        // For deleting from storage bucket, you'd iterate through filesToDelete and call client.storage.from(BUCKET).remove()
+        if (directFilesError) throw directFilesError;
 
-        if (filesError) throw filesError;
+        let filesToDeleteFromStorage = directFiles.map(f => f.storage_path).filter(Boolean);
 
-        if (filesToDelete.length > 0) {
-            const fileIdsToDelete = filesToDelete.map(f => f.id);
-            const { error: deleteFilesError } = await client
+        // Step 2: Delete direct files from storage
+        if (filesToDeleteFromStorage.length > 0) {
+            const { error: storageDeleteError } = await client.storage.from(BUCKET).remove(filesToDeleteFromStorage);
+            if (storageDeleteError) {
+                console.warn("Partial storage deletion error:", storageDeleteError);
+                // Don't throw, try to continue with metadata deletion
+            }
+        }
+
+        // Step 3: Delete file metadata from the 'files' table for files directly in this folder
+        if (directFiles.length > 0) {
+            const fileIdsToDelete = directFiles.map(f => f.id);
+            const { error: deleteMetadataError } = await client
                 .from('files')
                 .delete()
                 .in('id', fileIdsToDelete);
-            if (deleteFilesError) throw deleteFilesError;
+            if (deleteMetadataError) throw deleteMetadataError;
         }
 
-        // Recursively delete subfolders (if you track them explicitly)
-        // For simplicity, this example just deletes the main folder entry.
-        // A more robust solution would involve a database trigger or a serverless function to cascade deletes.
-
-        const { error } = await client.from('folders').delete().eq('id', folderId);
-        if (error) {
-            console.error(error);
-            return alert("Failed to delete folder.");
+        // Step 4: Delete the folder itself
+        const { error: folderDeleteError } = await client.from('folders').delete().eq('id', folderId);
+        if (folderDeleteError) {
+            console.error("Error deleting folder metadata:", folderDeleteError);
+            return alert("Failed to delete folder metadata.");
         }
 
         // If the deleted folder was the current one or a parent, navigate up
@@ -461,7 +529,7 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
         displayContent();
     } catch (error) {
         console.error("Error deleting folder and its contents:", error);
-        alert("An error occurred while deleting the folder and its contents.");
+        alert("An error occurred while deleting the folder and its contents: " + error.message);
     }
   }
 
@@ -492,27 +560,29 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
 async function displayFiles() {
   const user = (await client.auth.getUser()).data.user;
   if (!user) {
-    document.getElementById('fileList').innerHTML = '';
+    fileListDiv.innerHTML = '';
     return;
   }
 
-  const { data, error } = await client
+  let query = client
     .from('files')
     .select('*')
-    .eq('user_id', user.id)
-    .is('folder_id', currentFolderId) // Filter by currentFolderId
-    .order('created_at', { ascending: false });
+    .eq('user_id', user.id);
 
-  const container = document.getElementById('fileList');
-  container.innerHTML = '';
-
-  if (error) {
-    console.error(error);
-    return alert("Failed to load files.");
+  // Corrected logic for currentFolderId
+  if (currentFolderId) {
+      query = query.eq('folder_id', currentFolderId);
+  } else {
+      query = query.is('folder_id', null);
   }
 
-  if (!data.length && !document.getElementById('folderList').children.length) {
-    container.innerHTML = '<p>No files or folders here yet.</p>';
+  const { data, error } = await query.order('created_at', { ascending: false });
+
+  fileListDiv.innerHTML = ''; // Clear before adding items
+
+  if (error) {
+    console.error("Error loading files:", error);
+    fileListDiv.innerHTML = '<p style="color:#e55353;">Failed to load files: ' + error.message + '</p>';
     return;
   }
 
@@ -526,7 +596,7 @@ async function displayFiles() {
         ? `<video controls src="${file.url}"></video>`
         : `<a href="${file.url}" target="_blank">Download File</a>`;
 
-    container.innerHTML += `
+    fileListDiv.innerHTML += `
       <div class="file-item">
         <button class="delete-btn" onclick="deleteFile('${file.id}')" title="Delete this file">🗑</button>
         <button class="rename-btn" onclick="renameFile('${file.id}', '${file.nickname || ''}')" title="Add/Update nickname">✏</button>
@@ -543,28 +613,31 @@ async function deleteFile(fileId) {
   const confirmed = confirm("Are you sure you want to delete this file?");
   if (!confirmed) return;
 
-  const { data: fileData, error: fetchError } = await client.from('files').select('url, name').eq('id', fileId).single();
+  const { data: fileData, error: fetchError } = await client.from('files').select('url, name, storage_path').eq('id', fileId).single();
   if (fetchError || !fileData) {
       console.error("Error fetching file for deletion:", fetchError);
-      return alert("Failed to find file for deletion.");
+      return alert("Failed to find file for deletion. " + (fetchError ? fetchError.message : ''));
   }
 
-  // Extract the path from the URL for Supabase Storage deletion
-  // This is a basic extraction and might need refinement depending on your exact URL structure
-  const filePathInStorage = fileData.url.split(BUCKET + '/').pop();
+  // Use the stored storage_path for deletion
+  const filePathInStorage = fileData.storage_path;
 
-  const { error: storageError } = await client.storage.from(BUCKET).remove([filePathInStorage]);
-  if (storageError) {
-      console.error("Error deleting from storage:", storageError);
-      // Decide if you want to abort if storage deletion fails but metadata deletion succeeds
-      // For now, we'll proceed to delete metadata even if storage deletion has issues
-      alert("Warning: Could not delete file from storage. Please check bucket manually if issue persists.");
+  if (filePathInStorage) { // Only attempt storage deletion if a path exists
+      const { error: storageError } = await client.storage.from(BUCKET).remove([filePathInStorage]);
+      if (storageError) {
+          console.error("Error deleting from storage:", storageError);
+          // Don't necessarily abort, proceed to delete metadata
+          alert("Warning: Could not delete file from storage. Please check bucket manually if issue persists. Error: " + storageError.message);
+      }
+  } else {
+      console.warn("No storage_path found for file ID:", fileId, "Skipping storage deletion.");
   }
 
-  const { error } = await client.from('files').delete().eq('id', fileId);
-  if (error) {
-    console.error(error);
-    return alert("Delete failed.");
+
+  const { error: dbDeleteError } = await client.from('files').delete().eq('id', fileId);
+  if (dbDeleteError) {
+    console.error("Error deleting file metadata:", dbDeleteError);
+    return alert("Delete failed: " + dbDeleteError.message);
   }
   displayContent(); // Refresh content
 }
