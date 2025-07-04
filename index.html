@@ -179,11 +179,39 @@
     .public-link a {
         color: #90ee90;
     }
+    /* Styles for single file view */
+    #single-file-view {
+        display: none; /* Hidden by default */
+        padding: 20px;
+        text-align: center;
+    }
+    #single-file-view img,
+    #single-file-view video {
+        max-width: 100%;
+        max-height: 80vh; /* Adjust as needed */
+        object-fit: contain;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    #single-file-view a {
+        color: var(--accent);
+        font-size: 1.2em;
+        text-decoration: none;
+    }
+    #single-file-view button {
+        margin-top: 20px;
+        width: auto;
+        padding: 10px 20px;
+        background: #555;
+    }
+    #single-file-view button:hover {
+        background: #777;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>ByteCrate</h2>
+    <h2 id="main-title">ByteCrate</h2>
 
     <div id="auth-container">
       <input type="email" id="email" placeholder="Email" />
@@ -201,6 +229,13 @@
       <button id="logout-btn">Sign Out</button>
       <div id="fileList"></div>
     </div>
+
+    <div id="single-file-view" style="display:none;">
+      <h3>Shared File</h3>
+      <div id="shared-file-content"></div>
+      <button onclick="window.location.hash = ''; location.reload();">Go Back to My Files</button>
+    </div>
+
   </div>
 
 <script>
@@ -209,12 +244,15 @@
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRoZW5reWR5aWJjeGxjdmRnaWZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NzE2MDgsImV4cCI6MjA2NzA0NzYwOH0.fkms-yQx1ODCKczimbapEwxcHahYfb9En-vxX9GzfQo'
   );
   const BUCKET = 'testfiles';
-  // Corrected PUBLIC_BASE_URL to include a trailing '#'
-  const PUBLIC_BASE_URL = window.location.origin + window.location.pathname + '#'; 
+  const PUBLIC_BASE_URL = window.location.origin + window.location.pathname + '#';
 
   const authContainer = document.getElementById('auth-container');
   const uploadContainer = document.getElementById('upload-container');
   const authMessage = document.getElementById('auth-message');
+  const singleFileView = document.getElementById('single-file-view');
+  const sharedFileContent = document.getElementById('shared-file-content');
+  const mainTitle = document.getElementById('main-title');
+
 
   document.getElementById('login-btn').addEventListener('click', async () => {
     authMessage.textContent = '';
@@ -265,15 +303,28 @@
 
   client.auth.onAuthStateChange((_event, session) => {
     if (session && session.user) {
+      // User is logged in
       authContainer.style.display = 'none';
       uploadContainer.style.display = 'block';
       authMessage.textContent = '';
+      singleFileView.style.display = 'none'; // Ensure single file view is hidden
+      mainTitle.textContent = 'ByteCrate - My Files'; // Change title
       displayFiles();
     } else {
-      authContainer.style.display = 'block';
-      uploadContainer.style.display = 'none';
-      authMessage.style.color = '#e55353';
-      authMessage.textContent = '';
+      // User is not logged in
+      const publicHash = window.location.hash.substring(1); // Get hash without '#'
+      if (publicHash) {
+          // If there's a hash, attempt to show shared file
+          displaySharedFile(publicHash);
+      } else {
+          // No hash, show login/signup
+          authContainer.style.display = 'block';
+          uploadContainer.style.display = 'none';
+          singleFileView.style.display = 'none';
+          authMessage.style.color = '#e55353';
+          authMessage.textContent = '';
+          mainTitle.textContent = 'ByteCrate'; // Revert title
+      }
     }
   });
 
@@ -504,6 +555,68 @@
     alert("All files cleared successfully!");
     displayFiles();
   });
+
+  // --- Single File View Logic ---
+  async function displaySharedFile(publicHash) {
+    mainTitle.textContent = 'ByteCrate - Shared File'; // Change title
+    authContainer.style.display = 'none';
+    uploadContainer.style.display = 'none';
+    singleFileView.style.display = 'block';
+    sharedFileContent.innerHTML = '<p>Loading file...</p>';
+
+    const { data, error } = await client
+      .from('files')
+      .select('*')
+      .eq('public_hash', publicHash)
+      .eq('is_public', true) // Ensure it's explicitly public
+      .single(); // Expect only one result
+
+    if (error || !data) {
+      console.error("Error fetching shared file:", error);
+      sharedFileContent.innerHTML = '<p>File not found or not public.</p>';
+      return;
+    }
+
+    const file = data;
+    const ext = file.name.split('.').pop().toLowerCase();
+    const isImage = ['jpg', 'jpeg', 'png', 'gif'].includes(ext);
+    const isVideo = ['mp4', 'webm', 'ogg'].includes(ext);
+
+    let contentHTML;
+    if (isImage) {
+      contentHTML = `<img src="${file.url}" alt="${file.name}">`;
+    } else if (isVideo) {
+      contentHTML = `<video controls src="${file.url}" preload="metadata"></video>`;
+    } else {
+      contentHTML = `<a href="${file.url}" target="_blank" download>Download: ${file.name}</a><p>File type not directly viewable in browser.</p>`;
+    }
+
+    sharedFileContent.innerHTML = `
+      <h3>${file.nickname || file.name}</h3>
+      ${contentHTML}
+    `;
+  }
+
+  // Initial check on page load for a public hash
+  window.addEventListener('load', () => {
+    // Only process hash if no user session is active (i.e., not logged in)
+    client.auth.getSession().then(({ data: { session } }) => {
+        if (!session) { // If user is not logged in
+            const publicHash = window.location.hash.substring(1); // Get hash without '#'
+            if (publicHash) {
+                displaySharedFile(publicHash);
+            }
+        } else {
+            // If user is logged in, hide single file view and show user's files
+            singleFileView.style.display = 'none';
+            authContainer.style.display = 'none';
+            uploadContainer.style.display = 'block';
+            mainTitle.textContent = 'ByteCrate - My Files';
+            displayFiles();
+        }
+    });
+  });
+
 </script>
 </body>
 </html>
