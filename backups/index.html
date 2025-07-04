@@ -40,7 +40,7 @@
       color: var(--accent);
       text-align: center;
     }
-    input, button {
+    input, button, textarea {
       width: 100%;
       box-sizing: border-box;
       padding: 10px;
@@ -49,7 +49,7 @@
       border: none;
       font-size: 16px;
     }
-    input {
+    input, textarea {
       background: #2a2a2a;
       color: var(--text);
     }
@@ -63,7 +63,7 @@
     button:hover {
       background: #0284c7;
     }
-    .file-item, .folder-item { /* Added folder-item */
+    .file-item, .folder-item {
       margin-top: 20px;
       padding: 15px;
       background: #2a2a2a;
@@ -83,32 +83,22 @@
       color: var(--accent);
       word-break: break-all;
     }
+
+    /* Original delete/rename buttons were absolute, now integrated into flex .file-actions */
+    /* Remove absolute positioning from here, as they're within .file-actions */
     .delete-btn {
-      position: absolute;
-      top: 15px;
-      right: 15px;
       background: #e55353;
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-size: 14px;
-      margin: 0;
     }
     .delete-btn:hover {
       background: #c72e2e;
     }
     .rename-btn {
-      position: absolute;
-      top: 45px;
-      right: 15px;
       background: #0ea5e9;
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-size: 14px;
-      margin: 0;
     }
     .rename-btn:hover {
       background: #0284c7;
     }
+
     #auth-container {
       margin-bottom: 20px;
     }
@@ -119,31 +109,37 @@
     #logout-btn:hover {
       background: #c72e2e;
     }
+
+    /* Media query to ensure buttons within .file-actions stay small */
     @media (max-width: 600px) {
       .container {
         padding: 15px;
       }
-      button {
+      /* General buttons can still be 100% width if desired, but not action buttons */
+      /* button {
         width: 100%;
+      } */
+
+      .file-actions {
+        flex-direction: row; /* Keep them in a row on small screens */
+        flex-wrap: wrap; /* Allow wrapping if needed */
+        justify-content: flex-start; /* Align to start */
       }
-      .delete-btn, .rename-btn {
-        top: auto;
-        right: 10px;
-        position: static;
-        margin-right: 5px;
-      }
-      .file-item button {
-        display: inline-block;
-        margin-top: 5px;
+      .file-actions button,
+      .file-actions a button { /* Target buttons inside file-actions specifically */
+        width: auto; /* Override 100% width from general button rule */
+        padding: 6px 10px; /* Keep them small */
+        font-size: 14px;
+        margin-top: 5px; /* Add a little vertical spacing between rows if wrapped */
       }
     }
     .disabled-btn {
-  background: #444 !important;
-  color: #888 !important;
-  cursor: not-allowed !important;
-  opacity: 0.6;
-}
-    /* New styles for folder specific items */
+      background: #444 !important;
+      color: #888 !important;
+      cursor: not-allowed !important;
+      opacity: 0.6;
+    }
+    /* Folder specific items */
     .folder-item {
       display: flex;
       align-items: center;
@@ -155,18 +151,128 @@
     }
     .folder-item button {
       margin-left: 10px;
-      position: static; /* Override absolute positioning */
-      padding: 4px 8px; /* Smaller padding */
+      position: static;
+      padding: 4px 8px;
     }
     .current-path {
         margin-top: 10px;
         color: var(--subtext);
     }
     .back-btn {
-        background: #4CAF50; /* Green for back button */
+        background: #4CAF50;
     }
     .back-btn:hover {
         background: #45a049;
+    }
+
+    /* Styles for download button and size display */
+    .file-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 10px;
+    }
+    .file-actions button {
+      width: auto;
+      padding: 6px 10px;
+      font-size: 14px;
+      margin: 0; /* Ensures consistent spacing from flex gap */
+      position: static;
+    }
+    .download-btn {
+      background: #2196F3;
+    }
+    .download-btn:hover {
+      background: #0b7dda;
+    }
+    .info-btn {
+      background: #FFC107;
+      color: #333;
+    }
+    .info-btn:hover {
+      background: #FFA000;
+    }
+    .file-size, .folder-size {
+        font-size: 0.9em;
+        color: var(--subtext);
+        margin-left: 10px;
+    }
+
+    #createTextContainer {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #333;
+    }
+    #textFileNameInput {
+      margin-bottom: 10px;
+    }
+    #textContent {
+      min-height: 150px;
+      resize: vertical;
+    }
+    #createTextFileBtn {
+      background: #673AB7;
+    }
+    #createTextFileBtn:hover {
+      background: #512DA8;
+    }
+
+    /* Info Modal Styles */
+    .info-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    .info-modal-content {
+      background-color: var(--card);
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+      width: 90%;
+      max-width: 400px;
+      position: relative;
+    }
+    .info-modal-content h3 {
+      color: var(--accent);
+      margin-top: 0;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .info-modal-content p {
+      margin-bottom: 10px;
+      font-size: 1.1em;
+    }
+    .info-modal-content p strong {
+      color: var(--subtext);
+      display: inline-block;
+      width: 80px;
+    }
+    .info-modal-close-btn {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: #e55353;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      line-height: 1;
+    }
+    .info-modal-close-btn:hover {
+      background: #c72e2e;
     }
   </style>
 </head>
@@ -188,7 +294,14 @@
       <button onclick="createFolder()">➕ Create Folder</button>
       <hr>
       <input type="file" id="fileInput" />
-      <button onclick="uploadFile()">⬆ Upload</button>
+      <button onclick="uploadFile()">⬆ Upload File</button>
+
+      <div id="createTextContainer">
+        <input type="text" id="textFileNameInput" placeholder="Text file name (e.g., notes.txt)" />
+        <textarea id="textContent" placeholder="Write your text here..."></textarea>
+        <button id="createTextFileBtn" onclick="createTextFile()">📝 Create Text File</button>
+      </div>
+      <hr>
       <button id="clear-saved-btn" class="disabled-btn">🗑 Clear Saved</button>
       <button id="logout-btn">Sign Out</button>
 
@@ -202,6 +315,17 @@
     </div>
   </div>
 
+  <div id="infoModalOverlay" class="info-modal-overlay" style="display:none;">
+    <div class="info-modal-content">
+      <h3>File Information</h3>
+      <p><strong>Name:</strong> <span id="infoFileName"></span></p>
+      <p><strong>Nickname:</strong> <span id="infoFileNickname"></span></p>
+      <p><strong>Size:</strong> <span id="infoFileSize"></span></p>
+      <p><strong>Type:</strong> <span id="infoFileType"></span></p>
+      <button class="info-modal-close-btn" onclick="closeInfoModal()">X</button>
+    </div>
+  </div>
+
 <script>
   const client = supabase.createClient(
     'https://thenkydyibcxlcvdgifo.supabase.co',
@@ -212,16 +336,22 @@
   const authContainer = document.getElementById('auth-container');
   const uploadContainer = document.getElementById('upload-container');
   const authMessage = document.getElementById('auth-message');
-  const folderListDiv = document.getElementById('folderList'); // Get the new folder list div
-  const fileListDiv = document.getElementById('fileList'); // Get the file list div
+  const folderListDiv = document.getElementById('folderList');
+  const fileListDiv = document.getElementById('fileList');
   const currentPathDisplay = document.getElementById('currentPathDisplay');
   const backButton = document.getElementById('back-btn');
 
-  let currentFolderId = null; // To keep track of the current folder
-  let currentFolderPath = []; // To keep track of the path for display
+  const infoModalOverlay = document.getElementById('infoModalOverlay');
+  const infoFileName = document.getElementById('infoFileName');
+  const infoFileNickname = document.getElementById('infoFileNickname');
+  const infoFileSize = document.getElementById('infoFileSize');
+  const infoFileType = document.getElementById('infoFileType');
+
+
+  let currentFolderId = null;
+  let currentFolderPath = [];
 
   document.addEventListener('DOMContentLoaded', () => {
-      // Check session on load to determine initial state
       client.auth.getSession().then(({ data: { session } }) => {
           if (session) {
               authContainer.style.display = 'none';
@@ -255,26 +385,28 @@
       authMessage.textContent = "Sign up successful! Please check your email to confirm.";
     }
   });
-document.getElementById('reset-password-btn').addEventListener('click', async () => {
-  const email = document.getElementById('email').value;
-  authMessage.style.color = '#e55353';
 
-  if (!email) {
-    authMessage.textContent = 'Please enter your email above first.';
-    return;
-  }
+  document.getElementById('reset-password-btn').addEventListener('click', async () => {
+    const email = document.getElementById('email').value;
+    authMessage.style.color = '#e55353';
 
-  const { error } = await client.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.href // Change this to your password reset page if needed
+    if (!email) {
+      authMessage.textContent = 'Please enter your email above first.';
+      return;
+    }
+
+    const { error } = await client.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.href
+    });
+
+    if (error) {
+      authMessage.textContent = error.message;
+    } else {
+      authMessage.style.color = '#0ea5e9';
+      authMessage.textContent = 'Reset link sent! Check your email.';
+    }
   });
 
-  if (error) {
-    authMessage.textContent = error.message;
-  } else {
-    authMessage.style.color = '#0ea5e9';
-    authMessage.textContent = 'Reset link sent! Check your email.';
-  }
-});
   document.getElementById('logout-btn').addEventListener('click', async () => {
     await client.auth.signOut();
   });
@@ -284,9 +416,9 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
       authContainer.style.display = 'none';
       uploadContainer.style.display = 'block';
       authMessage.textContent = '';
-      currentFolderId = null; // Reset to root when logged in
+      currentFolderId = null;
       currentFolderPath = [];
-      displayContent(); // Call a new function to display both folders and files
+      displayContent();
     } else {
       authContainer.style.display = 'block';
       uploadContainer.style.display = 'none';
@@ -294,11 +426,19 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
       authMessage.textContent = '';
       currentFolderId = null;
       currentFolderPath = [];
-      folderListDiv.innerHTML = ''; // Clear content on logout
-      fileListDiv.innerHTML = ''; // Clear content on logout
-      updatePathDisplay(); // Update path display on logout
+      folderListDiv.innerHTML = '';
+      fileListDiv.innerHTML = '';
+      updatePathDisplay();
     }
   });
+
+  function formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
 
   async function uploadFile() {
     const fileInput = document.getElementById('fileInput');
@@ -308,52 +448,108 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
     const user = (await client.auth.getUser()).data.user;
     if (!user) return alert("User not authenticated. Please log in.");
 
-    // Construct the storage path including the current folder ID if applicable
-    const storagePathPrefix = currentFolderId ? `${user.id}/${currentFolderId}/` : `${user.id}/`; // User-specific root folder then current folder
+    const storagePathPrefix = currentFolderId ? `${user.id}/${currentFolderId}/` : `${user.id}/`;
     const filePathInStorage = `${storagePathPrefix}${Date.now()}_${file.name}`;
 
-
-    // Upload to Supabase Storage
-    const { data: uploadData, error: uploadError } = await client.storage.from(BUCKET).upload(filePathInStorage, file);
+    const { data: uploadData, error: uploadError } = await client.storage.from(BUCKET).upload(filePathInStorage, file, {
+        cacheControl: '3600',
+        upsert: false
+    });
     if (uploadError) {
         console.error("Upload failed:", uploadError);
         return alert("Upload failed: " + uploadError.message);
     }
 
-    // Get public URL
     const { data: publicData } = client.storage.from(BUCKET).getPublicUrl(filePathInStorage);
     if (!publicData || !publicData.publicUrl) {
         console.error("Could not get public URL for:", filePathInStorage);
         return alert("Failed to get public URL after upload.");
     }
 
-    // Insert file metadata into 'files' table
     const { error: insertError } = await client.from('files').insert({
       user_id: user.id,
       name: file.name,
       nickname: '',
       url: publicData.publicUrl,
-      folder_id: currentFolderId, // Assign current folder ID
-      storage_path: filePathInStorage // Store the full storage path for deletion
+      folder_id: currentFolderId,
+      storage_path: filePathInStorage,
+      size: file.size
     });
 
     if (insertError) {
       console.error("Insert error:", insertError);
-      // Attempt to delete from storage if metadata insertion fails
       await client.storage.from(BUCKET).remove([filePathInStorage]);
       return alert("Could not save file metadata. File upload cancelled.");
     }
 
-    displayContent(); // Refresh content
+    displayContent();
     fileInput.value = '';
   }
 
+  async function createTextFile() {
+    const textFileNameInput = document.getElementById('textFileNameInput');
+    const textContent = document.getElementById('textContent');
+
+    let fileName = textFileNameInput.value.trim();
+    const content = textContent.value;
+
+    if (!fileName) {
+      return alert("Please enter a name for your text file.");
+    }
+    if (!fileName.toLowerCase().endsWith('.txt')) {
+      fileName += '.txt';
+    }
+
+    const user = (await client.auth.getUser()).data.user;
+    if (!user) return alert("User not authenticated. Please log in.");
+
+    const fileBlob = new Blob([content], { type: 'text/plain' });
+
+    const storagePathPrefix = currentFolderId ? `${user.id}/${currentFolderId}/` : `${user.id}/`;
+    const filePathInStorage = `${storagePathPrefix}${Date.now()}_${fileName}`;
+
+    const { data: uploadData, error: uploadError } = await client.storage.from(BUCKET).upload(filePathInStorage, fileBlob, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: 'text/plain'
+    });
+
+    if (uploadError) {
+        console.error("Text file upload failed:", uploadError);
+        return alert("Text file upload failed: " + uploadError.message);
+    }
+
+    const { data: publicData } = client.storage.from(BUCKET).getPublicUrl(filePathInStorage);
+    if (!publicData || !publicData.publicUrl) {
+        console.error("Could not get public URL for text file:", filePathInStorage);
+        return alert("Failed to get public URL for text file after upload.");
+    }
+
+    const { error: insertError } = await client.from('files').insert({
+      user_id: user.id,
+      name: fileName,
+      nickname: '',
+      url: publicData.publicUrl,
+      folder_id: currentFolderId,
+      storage_path: filePathInStorage,
+      size: fileBlob.size
+    });
+
+    if (insertError) {
+      console.error("Insert error for text file:", insertError);
+      await client.storage.from(BUCKET).remove([filePathInStorage]);
+      return alert("Could not save text file metadata. Upload cancelled.");
+    }
+
+    displayContent();
+    textFileNameInput.value = '';
+    textContent.value = '';
+  }
+
   async function displayContent() {
-    // Clear previous content before loading new
     folderListDiv.innerHTML = '';
     fileListDiv.innerHTML = '';
 
-    // Show a loading message
     folderListDiv.innerHTML = '<p>Loading content...</p>';
     fileListDiv.innerHTML = '';
 
@@ -361,18 +557,16 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
     await displayFiles();
     updatePathDisplay();
 
-    // Remove loading message if content is loaded
-    // Check if both are empty after trying to load, then show 'No content' message
     const hasFolders = folderListDiv.querySelector('.folder-item');
     const hasFiles = fileListDiv.querySelector('.file-item');
 
     if (!hasFolders && !hasFiles) {
         folderListDiv.innerHTML = '<p>No folders or files here yet.</p>';
-        fileListDiv.innerHTML = ''; // Ensure file list is empty
+        fileListDiv.innerHTML = '';
     } else if (!hasFolders) {
-        folderListDiv.innerHTML = ''; // Clear if only files are loaded
+        folderListDiv.innerHTML = '';
     } else if (!hasFiles) {
-        fileListDiv.innerHTML = ''; // Clear if only folders are loaded
+        fileListDiv.innerHTML = '';
     }
   }
 
@@ -388,7 +582,6 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
       .select('*')
       .eq('user_id', user.id);
 
-    // Corrected logic for currentFolderId
     if (currentFolderId) {
         query = query.eq('parent_id', currentFolderId);
     } else {
@@ -397,7 +590,7 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
 
     const { data, error } = await query.order('name', { ascending: true });
 
-    folderListDiv.innerHTML = ''; // Clear before adding items
+    folderListDiv.innerHTML = '';
 
     if (error) {
       console.error("Error loading folders:", error);
@@ -408,7 +601,7 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
     data.forEach((folder) => {
       folderListDiv.innerHTML += `
         <div class="folder-item" onclick="enterFolder('${folder.id}', '${folder.name}')">
-          <span>📁 <strong>${folder.name}</strong></span>
+          <span>📁 <strong>${folder.name}</strong> <span class="folder-size">(Folder)</span></span>
           <div>
             <button class="rename-btn" onclick="event.stopPropagation(); renameFolder('${folder.id}', '${folder.name}')" title="Rename folder">✏</button>
             <button class="delete-btn" onclick="event.stopPropagation(); deleteFolder('${folder.id}')" title="Delete folder">🗑</button>
@@ -435,7 +628,7 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
     });
 
     if (error) {
-      if (error.code === '23505') { // Unique violation error code
+      if (error.code === '23505') {
         return alert("A folder with this name already exists in this location.");
       }
       console.error("Error creating folder:", error);
@@ -461,7 +654,6 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
       console.error("Error renaming folder:", error);
       return alert("Failed to rename folder.");
     }
-    // Update path if the renamed folder is in the current path
     const pathIndex = currentFolderPath.findIndex(f => f.id === folderId);
     if (pathIndex !== -1) {
         currentFolderPath[pathIndex].name = newName.trim();
@@ -477,32 +669,23 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
     if (!user) return alert("User not authenticated.");
 
     try {
-        // Step 1: Recursively find and delete all files within this folder and its subfolders
-        // This is simplified. For a true recursive delete from storage, you'd need to iterate
-        // through subfolders as well. For now, we rely on the `storage_path` containing folder IDs.
-        // A better approach for deep deletion might involve a Supabase Function/Trigger.
-
-        // Get files directly in this folder
         const { data: directFiles, error: directFilesError } = await client
             .from('files')
             .select('id, storage_path')
             .eq('user_id', user.id)
-            .eq('folder_id', folderId); // Only direct children
+            .eq('folder_id', folderId);
 
         if (directFilesError) throw directFilesError;
 
         let filesToDeleteFromStorage = directFiles.map(f => f.storage_path).filter(Boolean);
 
-        // Step 2: Delete direct files from storage
         if (filesToDeleteFromStorage.length > 0) {
             const { error: storageDeleteError } = await client.storage.from(BUCKET).remove(filesToDeleteFromStorage);
             if (storageDeleteError) {
                 console.warn("Partial storage deletion error:", storageDeleteError);
-                // Don't throw, try to continue with metadata deletion
             }
         }
 
-        // Step 3: Delete file metadata from the 'files' table for files directly in this folder
         if (directFiles.length > 0) {
             const fileIdsToDelete = directFiles.map(f => f.id);
             const { error: deleteMetadataError } = await client
@@ -512,14 +695,12 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
             if (deleteMetadataError) throw deleteMetadataError;
         }
 
-        // Step 4: Delete the folder itself
         const { error: folderDeleteError } = await client.from('folders').delete().eq('id', folderId);
         if (folderDeleteError) {
             console.error("Error deleting folder metadata:", folderDeleteError);
             return alert("Failed to delete folder metadata.");
         }
 
-        // If the deleted folder was the current one or a parent, navigate up
         const pathIndex = currentFolderPath.findIndex(f => f.id === folderId);
         if (pathIndex !== -1) {
             currentFolderId = pathIndex > 0 ? currentFolderPath[pathIndex - 1].id : null;
@@ -541,7 +722,7 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
 
   backButton.addEventListener('click', () => {
     if (currentFolderPath.length > 0) {
-        currentFolderPath.pop(); // Remove the current folder from the path
+        currentFolderPath.pop();
         currentFolderId = currentFolderPath.length > 0 ? currentFolderPath[currentFolderPath.length - 1].id : null;
         displayContent();
     }
@@ -569,7 +750,6 @@ async function displayFiles() {
     .select('*')
     .eq('user_id', user.id);
 
-  // Corrected logic for currentFolderId
   if (currentFolderId) {
       query = query.eq('folder_id', currentFolderId);
   } else {
@@ -578,7 +758,7 @@ async function displayFiles() {
 
   const { data, error } = await query.order('created_at', { ascending: false });
 
-  fileListDiv.innerHTML = ''; // Clear before adding items
+  fileListDiv.innerHTML = '';
 
   if (error) {
     console.error("Error loading files:", error);
@@ -590,25 +770,58 @@ async function displayFiles() {
     const ext = file.name.split('.').pop().toLowerCase();
     const isImage = ['jpg', 'jpeg', 'png', 'gif'].includes(ext);
     const isVideo = ['mp4', 'webm', 'ogg'].includes(ext);
-    const preview = isImage
-      ? `<img src="${file.url}">`
-      : isVideo
-        ? `<video controls src="${file.url}"></video>`
-        : `<a href="${file.url}" target="_blank">Download File</a>`;
+    const isText = ['txt', 'md', 'json', 'html', 'css', 'js', 'xml'].includes(ext);
+
+    let preview = '';
+    if (isImage) {
+        preview = `<img src="${file.url}">`;
+    } else if (isVideo) {
+        preview = `<video controls src="${file.url}"></video>`;
+    } else if (isText) {
+        preview = `<div><button class="download-btn" onclick="viewTextFile('${file.url}')">👁️ View Text</button></div>`;
+    } else {
+        preview = `<a href="${file.url}" target="_blank">View File</a>`;
+    }
 
     fileListDiv.innerHTML += `
       <div class="file-item">
-        <button class="delete-btn" onclick="deleteFile('${file.id}')" title="Delete this file">🗑</button>
-        <button class="rename-btn" onclick="renameFile('${file.id}', '${file.nickname || ''}')" title="Add/Update nickname">✏</button>
-        <strong>${file.name}</strong>
+        <strong>${file.name}</strong> <span class="file-size">(${formatBytes(file.size || 0)})</span>
         ${file.nickname ? `<div><em>Nickname: ${file.nickname}</em></div>` : ''}
         ${preview}
-        <br/>
-        <small><a href="${file.url}" target="_blank">${file.url}</a></small>
+        <div class="file-actions">
+            <a href="${file.url}" download="${file.name}">
+                <button class="download-btn">⬇ Download</button>
+            </a>
+            <button class="rename-btn" onclick="renameFile('${file.id}', '${file.nickname || ''}')" title="Add/Update nickname">✏</button>
+            <button class="info-btn" onclick="openInfoModal(
+                '${file.name}',
+                '${file.nickname || 'N/A'}',
+                '${formatBytes(file.size || 0)}',
+                '${ext.toUpperCase() || 'N/A'}'
+            )" title="File Info">ℹ️</button>
+            <button class="delete-btn" onclick="deleteFile('${file.id}')" title="Delete this file">🗑</button>
+        </div>
       </div>
     `;
   });
 }
+
+function openInfoModal(name, nickname, size, type) {
+    infoFileName.textContent = name;
+    infoFileNickname.textContent = nickname;
+    infoFileSize.textContent = size;
+    infoFileType.textContent = type;
+    infoModalOverlay.style.display = 'flex';
+}
+
+function closeInfoModal() {
+    infoModalOverlay.style.display = 'none';
+}
+
+async function viewTextFile(fileUrl) {
+    window.open(fileUrl, '_blank');
+}
+
 async function deleteFile(fileId) {
   const confirmed = confirm("Are you sure you want to delete this file?");
   if (!confirmed) return;
@@ -619,28 +832,26 @@ async function deleteFile(fileId) {
       return alert("Failed to find file for deletion. " + (fetchError ? fetchError.message : ''));
   }
 
-  // Use the stored storage_path for deletion
   const filePathInStorage = fileData.storage_path;
 
-  if (filePathInStorage) { // Only attempt storage deletion if a path exists
+  if (filePathInStorage) {
       const { error: storageError } = await client.storage.from(BUCKET).remove([filePathInStorage]);
       if (storageError) {
           console.error("Error deleting from storage:", storageError);
-          // Don't necessarily abort, proceed to delete metadata
           alert("Warning: Could not delete file from storage. Please check bucket manually if issue persists. Error: " + storageError.message);
       }
   } else {
       console.warn("No storage_path found for file ID:", fileId, "Skipping storage deletion.");
   }
 
-
   const { error: dbDeleteError } = await client.from('files').delete().eq('id', fileId);
   if (dbDeleteError) {
     console.error("Error deleting file metadata:", dbDeleteError);
     return alert("Delete failed: " + dbDeleteError.message);
   }
-  displayContent(); // Refresh content
+  displayContent();
 }
+
 async function renameFile(fileId, currentNickname = '') {
   const newNick = prompt("Enter a nickname for this file:", currentNickname);
   if (newNick === null) return;
@@ -650,8 +861,9 @@ async function renameFile(fileId, currentNickname = '') {
     console.error(error);
     return alert("Rename failed.");
   }
-  displayContent(); // Refresh content
+  displayContent();
 }
+
 document.getElementById('clear-saved-btn').addEventListener('click', () => {
   alert("This feature is not available.");
 });
