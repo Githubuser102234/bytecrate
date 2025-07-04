@@ -368,7 +368,12 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
     <div class="file-item">
       <button class="delete-btn" onclick="deleteFile('${file.id}')" title="Delete this file">🗑</button>
       <button class="rename-btn" onclick="renameFile('${file.id}', '${file.nickname || ''}')" title="Add/Update nickname">✏</button>
-      ${publicButton}
+    <!-- Shown only if the file is private -->
+<button onclick="makePublic(fileId)">Make Public</button>
+
+<!-- Shown only if the file is public -->
+<button onclick="makePrivate(fileId)">Make Private</button>
+        ${publicButton}
       <strong>${file.name}</strong>
       ${file.nickname ? `<div><em>Nickname: ${file.nickname}</em></div>` : ''}
       ${preview}
@@ -403,6 +408,55 @@ async function renameFile(fileId, currentNickname = '') {
 document.getElementById('clear-saved-btn').addEventListener('click', () => {
   alert("This feature is not available.");
 });
+function generatePublicHash(length = 6) {
+  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+async function makePublic(fileId) {
+  const hash = generatePublicHash();
+  const { data, error } = await supabase
+    .from('files')
+    .update({ is_public: true, public_hash: hash })
+    .eq('id', fileId);
+
+  if (error) {
+    alert('Failed to make public');
+  } else {
+    const shareLink = `https://yourapp.com/#p${hash}`;
+    alert('Public link: ' + shareLink);
+  }
+}
+
+async function makePrivate(fileId) {
+  const { data, error } = await supabase
+    .from('files')
+    .update({ is_public: false, public_hash: null })
+    .eq('id', fileId);
+
+  if (error) {
+    alert('Failed to make private');
+  } else {
+    alert('File is now private');
+  }
+}
+// On page load
+const hash = window.location.hash;
+if (hash.startsWith('#p')) {
+  const publicHash = hash.slice(2);
+  const { data, error } = await supabase
+    .from('files')
+    .select('*')
+    .eq('public_hash', publicHash)
+    .eq('is_public', true)
+    .single();
+
+  if (data) {
+    // Show the file
+    showFile(data);
+  } else {
+    alert('Public file not found');
+  }
+}
 </script>
 </body>
 </html>
