@@ -26,9 +26,6 @@
       display: flex;
       justify-content: center;
       padding: 20px;
-      /* If you want the overlay to cover the entire browser window,
-         ensure body/html have min-height: 100vh or height: 100%; */
-      min-height: 100vh; /* This helps ensure the body takes up full viewport height */
     }
     .container {
       max-width: 600px;
@@ -37,7 +34,6 @@
       padding: 20px;
       border-radius: 12px;
       box-shadow: 0 0 10px rgba(0,0,0,0.4);
-      /* position: relative; /* Not needed on container if overlay is fixed to viewport */
     }
     h2 {
       margin-top: 0;
@@ -142,11 +138,11 @@
       }
     }
     .disabled-btn {
-      background: #444 !important;
-      color: #888 !important;
-      cursor: not-allowed !important;
-      opacity: 0.6;
-    }
+  background: #444 !important;
+  color: #888 !important;
+  cursor: not-allowed !important;
+  opacity: 0.6;
+}
     /* New styles for folder specific items */
     .folder-item {
       display: flex;
@@ -171,43 +167,6 @@
     }
     .back-btn:hover {
         background: #45a049;
-    }
-
-    /* Corrected Styles for the new loading circle and percentage */
-    #upload-overlay { /* Changed from class to ID for direct targeting */
-      position: fixed; /* Changed from absolute to fixed */
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.7); /* Darker, semi-transparent background */
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      z-index: 9999; /* Higher z-index to ensure it's on top */
-      /* border-radius: 12px; /* This was causing the issue, overlays typically don't have rounded corners */
-    }
-
-    .loader {
-      border: 8px solid #f3f3f3; /* Light grey */
-      border-top: 8px solid var(--accent); /* Blue */
-      border-radius: 50%;
-      width: 50px;
-      height: 50px;
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    .upload-percentage {
-      margin-top: 15px;
-      color: var(--text);
-      font-size: 20px;
-      font-weight: bold;
     }
   </style>
 </head>
@@ -243,11 +202,7 @@
     </div>
   </div>
 
-  <div id="upload-overlay" style="display:none;">
-    <div class="loader"></div>
-    <div id="upload-percentage" class="upload-percentage">0%</div>
-  </div>
-  <script>
+<script>
   const client = supabase.createClient(
     'https://thenkydyibcxlcvdgifo.supabase.co',
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRoZW5reWR5aWJjeGxjdmRnaWZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NzE2MDgsImV4cCI6MjA2NzA0NzYwOH0.fkms-yQx1ODCKczimbapEwxcHahYfb9En-vxX9GzfQo'
@@ -261,10 +216,6 @@
   const fileListDiv = document.getElementById('fileList'); // Get the file list div
   const currentPathDisplay = document.getElementById('currentPathDisplay');
   const backButton = document.getElementById('back-btn');
-
-  // New elements for upload progress
-  const uploadOverlay = document.getElementById('upload-overlay');
-  const uploadPercentage = document.getElementById('upload-percentage');
 
   let currentFolderId = null; // To keep track of the current folder
   let currentFolderPath = []; // To keep track of the path for display
@@ -357,61 +308,44 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
     const user = (await client.auth.getUser()).data.user;
     if (!user) return alert("User not authenticated. Please log in.");
 
-    // Show upload overlay
-    uploadOverlay.style.display = 'flex';
-    uploadPercentage.textContent = '0%';
-
-    const storagePathPrefix = currentFolderId ? `${user.id}/${currentFolderId}/` : `${user.id}/`;
+    // Construct the storage path including the current folder ID if applicable
+    const storagePathPrefix = currentFolderId ? `${user.id}/${currentFolderId}/` : `${user.id}/`; // User-specific root folder then current folder
     const filePathInStorage = `${storagePathPrefix}${Date.now()}_${file.name}`;
 
-    try {
-        const { data: uploadData, error: uploadError } = await client.storage.from(BUCKET).upload(filePathInStorage, file, {
-            // Add onUploadProgress callback
-            onUploadProgress: (event) => {
-                const percent = Math.round((event.loaded / event.total) * 100);
-                uploadPercentage.textContent = `${percent}%`;
-            }
-        });
 
-        if (uploadError) {
-            console.error("Upload failed:", uploadError);
-            alert("Upload failed: " + uploadError.message);
-            return;
-        }
-
-        const { data: publicData } = client.storage.from(BUCKET).getPublicUrl(filePathInStorage);
-        if (!publicData || !publicData.publicUrl) {
-            console.error("Could not get public URL for:", filePathInStorage);
-            alert("Failed to get public URL after upload.");
-            return;
-        }
-
-        const { error: insertError } = await client.from('files').insert({
-          user_id: user.id,
-          name: file.name,
-          nickname: '',
-          url: publicData.publicUrl,
-          folder_id: currentFolderId,
-          storage_path: filePathInStorage
-        });
-
-        if (insertError) {
-          console.error("Insert error:", insertError);
-          await client.storage.from(BUCKET).remove([filePathInStorage]); // Clean up storage if DB insert fails
-          alert("Could not save file metadata. File upload cancelled.");
-          return;
-        }
-
-        displayContent();
-        fileInput.value = ''; // Clear file input
-    } catch (error) {
-        console.error("An unexpected error occurred during upload:", error);
-        alert("An unexpected error occurred: " + error.message);
-    } finally {
-        // Hide upload overlay whether successful or failed
-        uploadOverlay.style.display = 'none';
-        uploadPercentage.textContent = '0%'; // Reset for next upload
+    // Upload to Supabase Storage
+    const { data: uploadData, error: uploadError } = await client.storage.from(BUCKET).upload(filePathInStorage, file);
+    if (uploadError) {
+        console.error("Upload failed:", uploadError);
+        return alert("Upload failed: " + uploadError.message);
     }
+
+    // Get public URL
+    const { data: publicData } = client.storage.from(BUCKET).getPublicUrl(filePathInStorage);
+    if (!publicData || !publicData.publicUrl) {
+        console.error("Could not get public URL for:", filePathInStorage);
+        return alert("Failed to get public URL after upload.");
+    }
+
+    // Insert file metadata into 'files' table
+    const { error: insertError } = await client.from('files').insert({
+      user_id: user.id,
+      name: file.name,
+      nickname: '',
+      url: publicData.publicUrl,
+      folder_id: currentFolderId, // Assign current folder ID
+      storage_path: filePathInStorage // Store the full storage path for deletion
+    });
+
+    if (insertError) {
+      console.error("Insert error:", insertError);
+      // Attempt to delete from storage if metadata insertion fails
+      await client.storage.from(BUCKET).remove([filePathInStorage]);
+      return alert("Could not save file metadata. File upload cancelled.");
+    }
+
+    displayContent(); // Refresh content
+    fileInput.value = '';
   }
 
   async function displayContent() {
@@ -419,7 +353,7 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
     folderListDiv.innerHTML = '';
     fileListDiv.innerHTML = '';
 
-    // Show a loading message (can be improved with a dedicated loader if preferred)
+    // Show a loading message
     folderListDiv.innerHTML = '<p>Loading content...</p>';
     fileListDiv.innerHTML = '';
 
