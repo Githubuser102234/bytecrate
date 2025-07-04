@@ -26,6 +26,9 @@
       display: flex;
       justify-content: center;
       padding: 20px;
+      /* If you want the overlay to cover the entire browser window,
+         ensure body/html have min-height: 100vh or height: 100%; */
+      min-height: 100vh; /* This helps ensure the body takes up full viewport height */
     }
     .container {
       max-width: 600px;
@@ -34,7 +37,7 @@
       padding: 20px;
       border-radius: 12px;
       box-shadow: 0 0 10px rgba(0,0,0,0.4);
-      position: relative; /* Needed for positioning the loader overlay */
+      /* position: relative; /* Not needed on container if overlay is fixed to viewport */
     }
     h2 {
       margin-top: 0;
@@ -139,11 +142,11 @@
       }
     }
     .disabled-btn {
-  background: #444 !important;
-  color: #888 !important;
-  cursor: not-allowed !important;
-  opacity: 0.6;
-}
+      background: #444 !important;
+      color: #888 !important;
+      cursor: not-allowed !important;
+      opacity: 0.6;
+    }
     /* New styles for folder specific items */
     .folder-item {
       display: flex;
@@ -170,20 +173,20 @@
         background: #45a049;
     }
 
-    /* Styles for the new loading circle and percentage */
-    .upload-overlay {
-      position: absolute;
+    /* Corrected Styles for the new loading circle and percentage */
+    #upload-overlay { /* Changed from class to ID for direct targeting */
+      position: fixed; /* Changed from absolute to fixed */
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.7);
+      background: rgba(0, 0, 0, 0.7); /* Darker, semi-transparent background */
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      z-index: 1000;
-      border-radius: 12px; /* Match container border-radius */
+      z-index: 9999; /* Higher z-index to ensure it's on top */
+      /* border-radius: 12px; /* This was causing the issue, overlays typically don't have rounded corners */
     }
 
     .loader {
@@ -222,10 +225,6 @@
     </div>
 
     <div id="upload-container" style="display:none;">
-      <div id="upload-overlay" class="upload-overlay" style="display:none;">
-        <div class="loader"></div>
-        <div id="upload-percentage" class="upload-percentage">0%</div>
-      </div>
       <input type="text" id="folderNameInput" placeholder="New folder name" />
       <button onclick="createFolder()">➕ Create Folder</button>
       <hr>
@@ -244,7 +243,11 @@
     </div>
   </div>
 
-<script>
+  <div id="upload-overlay" style="display:none;">
+    <div class="loader"></div>
+    <div id="upload-percentage" class="upload-percentage">0%</div>
+  </div>
+  <script>
   const client = supabase.createClient(
     'https://thenkydyibcxlcvdgifo.supabase.co',
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRoZW5reWR5aWJjeGxjdmRnaWZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NzE2MDgsImV4cCI6MjA2NzA0NzYwOH0.fkms-yQx1ODCKczimbapEwxcHahYfb9En-vxX9GzfQo'
