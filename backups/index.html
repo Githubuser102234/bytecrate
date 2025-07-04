@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ByteCrate">
+<link rel="apple-touch-icon" href="https://raw.githubusercontent.com/Githubuser102234/cloudstorage/refs/heads/main/maincdn/7E7BA7A7-E386-4897-A477-656535A9FAA7.png">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="https://raw.githubusercontent.com/Githubuser102234/bytecrate/refs/heads/main/maincdn/IMG_1393.jpeg" type="image/jpeg">
+  <title>ByteCrate - Home</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <style>
+    :root {
+      --bg: #121212;
+      --card: #1e1e1e;
+      --accent: #0ea5e9;
+      --text: #ffffff;
+      --subtext: #cccccc;
+    }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      max-width: 600px;
+      width: 100%;
+      background: var(--card);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.4);
+    }
+    h2 {
+      margin-top: 0;
+      color: var(--accent);
+      text-align: center;
+    }
+    input, button {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 6px;
+      border: none;
+      font-size: 16px;
+    }
+    input {
+      background: #2a2a2a;
+      color: var(--text);
+    }
+    button {
+      background: var(--accent);
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    button:hover {
+      background: #0284c7;
+    }
+    .file-item, .folder-item { /* Added folder-item */
+      margin-top: 20px;
+      padding: 15px;
+      background: #2a2a2a;
+      border-radius: 10px;
+      word-break: break-word;
+      position: relative;
+    }
+    .file-item img,
+    .file-item video {
+      width: 100%;
+      max-height: 300px;
+      object-fit: contain;
+      margin-top: 10px;
+      border-radius: 6px;
+    }
+    .file-item small a {
+      color: var(--accent);
+      word-break: break-all;
+    }
+    .delete-btn {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: #e55353;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 14px;
+      margin: 0;
+    }
+    .delete-btn:hover {
+      background: #c72e2e;
+    }
+    .rename-btn {
+      position: absolute;
+      top: 45px;
+      right: 15px;
+      background: #0ea5e9;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 14px;
+      margin: 0;
+    }
+    .rename-btn:hover {
+      background: #0284c7;
+    }
+    #auth-container {
+      margin-bottom: 20px;
+    }
+    #logout-btn {
+      background: #e55353;
+      margin-top: 10px;
+    }
+    #logout-btn:hover {
+      background: #c72e2e;
+    }
+    @media (max-width: 600px) {
+      .container {
+        padding: 15px;
+      }
+      button {
+        width: 100%;
+      }
+      .delete-btn, .rename-btn {
+        top: auto;
+        right: 10px;
+        position: static;
+        margin-right: 5px;
+      }
+      .file-item button {
+        display: inline-block;
+        margin-top: 5px;
+      }
+    }
+    .disabled-btn {
+  background: #444 !important;
+  color: #888 !important;
+  cursor: not-allowed !important;
+  opacity: 0.6;
+}
+    /* New styles for folder specific items */
+    .folder-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+    .folder-item span {
+      flex-grow: 1;
+    }
+    .folder-item button {
+      margin-left: 10px;
+      position: static; /* Override absolute positioning */
+      padding: 4px 8px; /* Smaller padding */
+    }
+    .current-path {
+        margin-top: 10px;
+        color: var(--subtext);
+    }
+    .back-btn {
+        background: #4CAF50; /* Green for back button */
+    }
+    .back-btn:hover {
+        background: #45a049;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>ByteCrate</h2>
+
+    <div id="auth-container">
+      <input type="email" id="email" placeholder="Email" />
+      <input type="password" id="password" placeholder="Password" />
+      <button id="login-btn">Log In</button>
+      <button id="signup-btn">Sign Up</button>
+      <button id="reset-password-btn" style="background:#444;">Forgot Password?</button>
+      <p id="auth-message" style="color:#e55353; margin-top: 10px;"></p>
+    </div>
+
+    <div id="upload-container" style="display:none;">
+      <input type="text" id="folderNameInput" placeholder="New folder name" />
+      <button onclick="createFolder()">➕ Create Folder</button>
+      <hr>
+      <input type="file" id="fileInput" />
+      <button onclick="uploadFile()">⬆ Upload</button>
+      <button id="clear-saved-btn" class="disabled-btn">🗑 Clear Saved</button>
+      <button id="logout-btn">Sign Out</button>
+
+      <div class="current-path">
+          Current Path: <span id="currentPathDisplay">/</span>
+          <button id="back-btn" class="back-btn" style="display:none;">⬅ Back</button>
+      </div>
+
+      <div id="folderList"></div>
+      <div id="fileList"></div>
+    </div>
+  </div>
+
+<script>
+  const client = supabase.createClient(
+    'https://thenkydyibcxlcvdgifo.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRoZW5reWR5aWJjeGxjdmRnaWZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NzE2MDgsImV4cCI6MjA2NzA0NzYwOH0.fkms-yQx1ODCKczimbapEwxcHahYfb9En-vxX9GzfQo'
+  );
+  const BUCKET = 'testfiles';
+
+  const authContainer = document.getElementById('auth-container');
+  const uploadContainer = document.getElementById('upload-container');
+  const authMessage = document.getElementById('auth-message');
+  const folderListDiv = document.getElementById('folderList'); // Get the new folder list div
+  const fileListDiv = document.getElementById('fileList'); // Get the file list div
+  const currentPathDisplay = document.getElementById('currentPathDisplay');
+  const backButton = document.getElementById('back-btn');
+
+  let currentFolderId = null; // To keep track of the current folder
+  let currentFolderPath = []; // To keep track of the path for display
+
+  document.addEventListener('DOMContentLoaded', () => {
+      // Check session on load to determine initial state
+      client.auth.getSession().then(({ data: { session } }) => {
+          if (session) {
+              authContainer.style.display = 'none';
+              uploadContainer.style.display = 'block';
+              displayContent();
+          } else {
+              authContainer.style.display = 'block';
+              uploadContainer.style.display = 'none';
+          }
+      });
+  });
+
+  document.getElementById('login-btn').addEventListener('click', async () => {
+    authMessage.textContent = '';
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    if (!email || !password) return authMessage.textContent = "Email and password required";
+    const { error } = await client.auth.signInWithPassword({ email, password });
+    if (error) authMessage.textContent = error.message;
+  });
+
+  document.getElementById('signup-btn').addEventListener('click', async () => {
+    authMessage.textContent = '';
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    if (!email || !password) return authMessage.textContent = "Email and password required";
+    const { error } = await client.auth.signUp({ email, password });
+    if (error) authMessage.textContent = error.message;
+    else {
+      authMessage.style.color = '#0ea5e9';
+      authMessage.textContent = "Sign up successful! Please check your email to confirm.";
+    }
+  });
+document.getElementById('reset-password-btn').addEventListener('click', async () => {
+  const email = document.getElementById('email').value;
+  authMessage.style.color = '#e55353';
+
+  if (!email) {
+    authMessage.textContent = 'Please enter your email above first.';
+    return;
+  }
+
+  const { error } = await client.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.href // Change this to your password reset page if needed
+  });
+
+  if (error) {
+    authMessage.textContent = error.message;
+  } else {
+    authMessage.style.color = '#0ea5e9';
+    authMessage.textContent = 'Reset link sent! Check your email.';
+  }
+});
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    await client.auth.signOut();
+  });
+
+  client.auth.onAuthStateChange((_event, session) => {
+    if (session && session.user) {
+      authContainer.style.display = 'none';
+      uploadContainer.style.display = 'block';
+      authMessage.textContent = '';
+      currentFolderId = null; // Reset to root when logged in
+      currentFolderPath = [];
+      displayContent(); // Call a new function to display both folders and files
+    } else {
+      authContainer.style.display = 'block';
+      uploadContainer.style.display = 'none';
+      authMessage.style.color = '#e55353';
+      authMessage.textContent = '';
+      currentFolderId = null;
+      currentFolderPath = [];
+      folderListDiv.innerHTML = ''; // Clear content on logout
+      fileListDiv.innerHTML = ''; // Clear content on logout
+      updatePathDisplay(); // Update path display on logout
+    }
+  });
+
+  async function uploadFile() {
+    const fileInput = document.getElementById('fileInput');
+    const file = fileInput.files[0];
+    if (!file) return alert("Choose a file first!");
+
+    const user = (await client.auth.getUser()).data.user;
+    if (!user) return alert("User not authenticated. Please log in.");
+
+    // Construct the storage path including the current folder ID if applicable
+    const storagePathPrefix = currentFolderId ? `${user.id}/${currentFolderId}/` : `${user.id}/`; // User-specific root folder then current folder
+    const filePathInStorage = `${storagePathPrefix}${Date.now()}_${file.name}`;
+
+
+    // Upload to Supabase Storage
+    const { data: uploadData, error: uploadError } = await client.storage.from(BUCKET).upload(filePathInStorage, file);
+    if (uploadError) {
+        console.error("Upload failed:", uploadError);
+        return alert("Upload failed: " + uploadError.message);
+    }
+
+    // Get public URL
+    const { data: publicData } = client.storage.from(BUCKET).getPublicUrl(filePathInStorage);
+    if (!publicData || !publicData.publicUrl) {
+        console.error("Could not get public URL for:", filePathInStorage);
+        return alert("Failed to get public URL after upload.");
+    }
+
+    // Insert file metadata into 'files' table
+    const { error: insertError } = await client.from('files').insert({
+      user_id: user.id,
+      name: file.name,
+      nickname: '',
+      url: publicData.publicUrl,
+      folder_id: currentFolderId, // Assign current folder ID
+      storage_path: filePathInStorage // Store the full storage path for deletion
+    });
+
+    if (insertError) {
+      console.error("Insert error:", insertError);
+      // Attempt to delete from storage if metadata insertion fails
+      await client.storage.from(BUCKET).remove([filePathInStorage]);
+      return alert("Could not save file metadata. File upload cancelled.");
+    }
+
+    displayContent(); // Refresh content
+    fileInput.value = '';
+  }
+
+  async function displayContent() {
+    // Clear previous content before loading new
+    folderListDiv.innerHTML = '';
+    fileListDiv.innerHTML = '';
+
+    // Show a loading message
+    folderListDiv.innerHTML = '<p>Loading content...</p>';
+    fileListDiv.innerHTML = '';
+
+    await displayFolders();
+    await displayFiles();
+    updatePathDisplay();
+
+    // Remove loading message if content is loaded
+    // Check if both are empty after trying to load, then show 'No content' message
+    const hasFolders = folderListDiv.querySelector('.folder-item');
+    const hasFiles = fileListDiv.querySelector('.file-item');
+
+    if (!hasFolders && !hasFiles) {
+        folderListDiv.innerHTML = '<p>No folders or files here yet.</p>';
+        fileListDiv.innerHTML = ''; // Ensure file list is empty
+    } else if (!hasFolders) {
+        folderListDiv.innerHTML = ''; // Clear if only files are loaded
+    } else if (!hasFiles) {
+        fileListDiv.innerHTML = ''; // Clear if only folders are loaded
+    }
+  }
+
+  async function displayFolders() {
+    const user = (await client.auth.getUser()).data.user;
+    if (!user) {
+      folderListDiv.innerHTML = '';
+      return;
+    }
+
+    let query = client
+      .from('folders')
+      .select('*')
+      .eq('user_id', user.id);
+
+    // Corrected logic for currentFolderId
+    if (currentFolderId) {
+        query = query.eq('parent_id', currentFolderId);
+    } else {
+        query = query.is('parent_id', null);
+    }
+
+    const { data, error } = await query.order('name', { ascending: true });
+
+    folderListDiv.innerHTML = ''; // Clear before adding items
+
+    if (error) {
+      console.error("Error loading folders:", error);
+      folderListDiv.innerHTML = '<p style="color:#e55353;">Failed to load folders: ' + error.message + '</p>';
+      return;
+    }
+
+    data.forEach((folder) => {
+      folderListDiv.innerHTML += `
+        <div class="folder-item" onclick="enterFolder('${folder.id}', '${folder.name}')">
+          <span>📁 <strong>${folder.name}</strong></span>
+          <div>
+            <button class="rename-btn" onclick="event.stopPropagation(); renameFolder('${folder.id}', '${folder.name}')" title="Rename folder">✏</button>
+            <button class="delete-btn" onclick="event.stopPropagation(); deleteFolder('${folder.id}')" title="Delete folder">🗑</button>
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  async function createFolder() {
+    const folderNameInput = document.getElementById('folderNameInput');
+    const folderName = folderNameInput.value.trim();
+    if (!folderName) {
+      return alert("Please enter a folder name.");
+    }
+
+    const user = (await client.auth.getUser()).data.user;
+    if (!user) return alert("User not authenticated.");
+
+    const { error } = await client.from('folders').insert({
+      user_id: user.id,
+      name: folderName,
+      parent_id: currentFolderId
+    });
+
+    if (error) {
+      if (error.code === '23505') { // Unique violation error code
+        return alert("A folder with this name already exists in this location.");
+      }
+      console.error("Error creating folder:", error);
+      return alert("Failed to create folder: " + error.message);
+    }
+
+    folderNameInput.value = '';
+    displayContent();
+  }
+
+  async function renameFolder(folderId, currentName) {
+    const newName = prompt("Enter new name for folder:", currentName);
+    if (newName === null || newName.trim() === '' || newName.trim() === currentName) return;
+
+    const user = (await client.auth.getUser()).data.user;
+    if (!user) return alert("User not authenticated.");
+
+    const { error } = await client.from('folders').update({ name: newName.trim() }).eq('id', folderId);
+    if (error) {
+      if (error.code === '23505') {
+        return alert("A folder with this name already exists in this location.");
+      }
+      console.error("Error renaming folder:", error);
+      return alert("Failed to rename folder.");
+    }
+    // Update path if the renamed folder is in the current path
+    const pathIndex = currentFolderPath.findIndex(f => f.id === folderId);
+    if (pathIndex !== -1) {
+        currentFolderPath[pathIndex].name = newName.trim();
+    }
+    displayContent();
+  }
+
+  async function deleteFolder(folderId) {
+    const confirmed = confirm("Are you sure you want to delete this folder and all its contents (files and subfolders)? This cannot be undone.");
+    if (!confirmed) return;
+
+    const user = (await client.auth.getUser()).data.user;
+    if (!user) return alert("User not authenticated.");
+
+    try {
+        // Step 1: Recursively find and delete all files within this folder and its subfolders
+        // This is simplified. For a true recursive delete from storage, you'd need to iterate
+        // through subfolders as well. For now, we rely on the `storage_path` containing folder IDs.
+        // A better approach for deep deletion might involve a Supabase Function/Trigger.
+
+        // Get files directly in this folder
+        const { data: directFiles, error: directFilesError } = await client
+            .from('files')
+            .select('id, storage_path')
+            .eq('user_id', user.id)
+            .eq('folder_id', folderId); // Only direct children
+
+        if (directFilesError) throw directFilesError;
+
+        let filesToDeleteFromStorage = directFiles.map(f => f.storage_path).filter(Boolean);
+
+        // Step 2: Delete direct files from storage
+        if (filesToDeleteFromStorage.length > 0) {
+            const { error: storageDeleteError } = await client.storage.from(BUCKET).remove(filesToDeleteFromStorage);
+            if (storageDeleteError) {
+                console.warn("Partial storage deletion error:", storageDeleteError);
+                // Don't throw, try to continue with metadata deletion
+            }
+        }
+
+        // Step 3: Delete file metadata from the 'files' table for files directly in this folder
+        if (directFiles.length > 0) {
+            const fileIdsToDelete = directFiles.map(f => f.id);
+            const { error: deleteMetadataError } = await client
+                .from('files')
+                .delete()
+                .in('id', fileIdsToDelete);
+            if (deleteMetadataError) throw deleteMetadataError;
+        }
+
+        // Step 4: Delete the folder itself
+        const { error: folderDeleteError } = await client.from('folders').delete().eq('id', folderId);
+        if (folderDeleteError) {
+            console.error("Error deleting folder metadata:", folderDeleteError);
+            return alert("Failed to delete folder metadata.");
+        }
+
+        // If the deleted folder was the current one or a parent, navigate up
+        const pathIndex = currentFolderPath.findIndex(f => f.id === folderId);
+        if (pathIndex !== -1) {
+            currentFolderId = pathIndex > 0 ? currentFolderPath[pathIndex - 1].id : null;
+            currentFolderPath = currentFolderPath.slice(0, pathIndex);
+        }
+
+        displayContent();
+    } catch (error) {
+        console.error("Error deleting folder and its contents:", error);
+        alert("An error occurred while deleting the folder and its contents: " + error.message);
+    }
+  }
+
+  async function enterFolder(folderId, folderName) {
+    currentFolderId = folderId;
+    currentFolderPath.push({ id: folderId, name: folderName });
+    displayContent();
+  }
+
+  backButton.addEventListener('click', () => {
+    if (currentFolderPath.length > 0) {
+        currentFolderPath.pop(); // Remove the current folder from the path
+        currentFolderId = currentFolderPath.length > 0 ? currentFolderPath[currentFolderPath.length - 1].id : null;
+        displayContent();
+    }
+  });
+
+  function updatePathDisplay() {
+      const pathString = currentFolderPath.map(f => f.name).join(' / ');
+      currentPathDisplay.textContent = `/ ${pathString}`;
+      if (currentFolderId) {
+          backButton.style.display = 'inline-block';
+      } else {
+          backButton.style.display = 'none';
+      }
+  }
+
+async function displayFiles() {
+  const user = (await client.auth.getUser()).data.user;
+  if (!user) {
+    fileListDiv.innerHTML = '';
+    return;
+  }
+
+  let query = client
+    .from('files')
+    .select('*')
+    .eq('user_id', user.id);
+
+  // Corrected logic for currentFolderId
+  if (currentFolderId) {
+      query = query.eq('folder_id', currentFolderId);
+  } else {
+      query = query.is('folder_id', null);
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: false });
+
+  fileListDiv.innerHTML = ''; // Clear before adding items
+
+  if (error) {
+    console.error("Error loading files:", error);
+    fileListDiv.innerHTML = '<p style="color:#e55353;">Failed to load files: ' + error.message + '</p>';
+    return;
+  }
+
+  data.forEach((file) => {
+    const ext = file.name.split('.').pop().toLowerCase();
+    const isImage = ['jpg', 'jpeg', 'png', 'gif'].includes(ext);
+    const isVideo = ['mp4', 'webm', 'ogg'].includes(ext);
+    const preview = isImage
+      ? `<img src="${file.url}">`
+      : isVideo
+        ? `<video controls src="${file.url}"></video>`
+        : `<a href="${file.url}" target="_blank">Download File</a>`;
+
+    fileListDiv.innerHTML += `
+      <div class="file-item">
+        <button class="delete-btn" onclick="deleteFile('${file.id}')" title="Delete this file">🗑</button>
+        <button class="rename-btn" onclick="renameFile('${file.id}', '${file.nickname || ''}')" title="Add/Update nickname">✏</button>
+        <strong>${file.name}</strong>
+        ${file.nickname ? `<div><em>Nickname: ${file.nickname}</em></div>` : ''}
+        ${preview}
+        <br/>
+        <small><a href="${file.url}" target="_blank">${file.url}</a></small>
+      </div>
+    `;
+  });
+}
+async function deleteFile(fileId) {
+  const confirmed = confirm("Are you sure you want to delete this file?");
+  if (!confirmed) return;
+
+  const { data: fileData, error: fetchError } = await client.from('files').select('url, name, storage_path').eq('id', fileId).single();
+  if (fetchError || !fileData) {
+      console.error("Error fetching file for deletion:", fetchError);
+      return alert("Failed to find file for deletion. " + (fetchError ? fetchError.message : ''));
+  }
+
+  // Use the stored storage_path for deletion
+  const filePathInStorage = fileData.storage_path;
+
+  if (filePathInStorage) { // Only attempt storage deletion if a path exists
+      const { error: storageError } = await client.storage.from(BUCKET).remove([filePathInStorage]);
+      if (storageError) {
+          console.error("Error deleting from storage:", storageError);
+          // Don't necessarily abort, proceed to delete metadata
+          alert("Warning: Could not delete file from storage. Please check bucket manually if issue persists. Error: " + storageError.message);
+      }
+  } else {
+      console.warn("No storage_path found for file ID:", fileId, "Skipping storage deletion.");
+  }
+
+
+  const { error: dbDeleteError } = await client.from('files').delete().eq('id', fileId);
+  if (dbDeleteError) {
+    console.error("Error deleting file metadata:", dbDeleteError);
+    return alert("Delete failed: " + dbDeleteError.message);
+  }
+  displayContent(); // Refresh content
+}
+async function renameFile(fileId, currentNickname = '') {
+  const newNick = prompt("Enter a nickname for this file:", currentNickname);
+  if (newNick === null) return;
+
+  const { error } = await client.from('files').update({ nickname: newNick.trim() }).eq('id', fileId);
+  if (error) {
+    console.error(error);
+    return alert("Rename failed.");
+  }
+  displayContent(); // Refresh content
+}
+document.getElementById('clear-saved-btn').addEventListener('click', () => {
+  alert("This feature is not available.");
+});
+</script>
+</body>
+</html>
