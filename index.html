@@ -83,7 +83,9 @@
       color: var(--accent);
       word-break: break-all;
     }
-    /* Adjusted positioning for buttons within file-actions */
+
+    /* Original delete/rename buttons were absolute, now integrated into flex .file-actions */
+    /* Remove absolute positioning from here, as they're within .file-actions */
     .delete-btn {
       background: #e55353;
     }
@@ -96,6 +98,7 @@
     .rename-btn:hover {
       background: #0284c7;
     }
+
     #auth-container {
       margin-bottom: 20px;
     }
@@ -106,20 +109,28 @@
     #logout-btn:hover {
       background: #c72e2e;
     }
+
+    /* Media query to ensure buttons within .file-actions stay small */
     @media (max-width: 600px) {
       .container {
         padding: 15px;
       }
-      button {
+      /* General buttons can still be 100% width if desired, but not action buttons */
+      /* button {
         width: 100%;
-      }
-      /* Ensure action buttons stack correctly on small screens */
+      } */
+
       .file-actions {
-        flex-direction: column;
-        gap: 10px;
+        flex-direction: row; /* Keep them in a row on small screens */
+        flex-wrap: wrap; /* Allow wrapping if needed */
+        justify-content: flex-start; /* Align to start */
       }
-      .file-actions button {
-        width: 100%;
+      .file-actions button,
+      .file-actions a button { /* Target buttons inside file-actions specifically */
+        width: auto; /* Override 100% width from general button rule */
+        padding: 6px 10px; /* Keep them small */
+        font-size: 14px;
+        margin-top: 5px; /* Add a little vertical spacing between rows if wrapped */
       }
     }
     .disabled-btn {
@@ -157,7 +168,7 @@
     /* Styles for download button and size display */
     .file-actions {
       display: flex;
-      flex-wrap: wrap; /* Allow wrapping on smaller screens */
+      flex-wrap: wrap;
       gap: 5px;
       margin-top: 10px;
     }
@@ -165,7 +176,7 @@
       width: auto;
       padding: 6px 10px;
       font-size: 14px;
-      margin: 0;
+      margin: 0; /* Ensures consistent spacing from flex gap */
       position: static;
     }
     .download-btn {
@@ -174,8 +185,8 @@
     .download-btn:hover {
       background: #0b7dda;
     }
-    .info-btn { /* New style for info button */
-      background: #FFC107; /* Amber color */
+    .info-btn {
+      background: #FFC107;
       color: #333;
     }
     .info-btn:hover {
@@ -241,7 +252,7 @@
     .info-modal-content p strong {
       color: var(--subtext);
       display: inline-block;
-      width: 80px; /* Align text */
+      width: 80px;
     }
     .info-modal-close-btn {
       position: absolute;
@@ -258,7 +269,7 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      line-height: 1; /* For better centering of 'X' */
+      line-height: 1;
     }
     .info-modal-close-btn:hover {
       background: #c72e2e;
@@ -314,7 +325,8 @@
       <button class="info-modal-close-btn" onclick="closeInfoModal()">X</button>
     </div>
   </div>
-  <script>
+
+<script>
   const client = supabase.createClient(
     'https://thenkydyibcxlcvdgifo.supabase.co',
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRoZW5reWR5aWJjeGxjdmRnaWZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NzE2MDgsImV4cCI6MjA2NzA0NzYwOH0.fkms-yQx1ODCKczimbapEwxcHahYfb9En-vxX9GzfQo'
@@ -329,7 +341,6 @@
   const currentPathDisplay = document.getElementById('currentPathDisplay');
   const backButton = document.getElementById('back-btn');
 
-  // Info Modal elements
   const infoModalOverlay = document.getElementById('infoModalOverlay');
   const infoFileName = document.getElementById('infoFileName');
   const infoFileNickname = document.getElementById('infoFileNickname');
@@ -795,18 +806,16 @@ async function displayFiles() {
   });
 }
 
-// Function to open the info modal
 function openInfoModal(name, nickname, size, type) {
     infoFileName.textContent = name;
     infoFileNickname.textContent = nickname;
     infoFileSize.textContent = size;
     infoFileType.textContent = type;
-    infoModalOverlay.style.display = 'flex'; // Show the modal
+    infoModalOverlay.style.display = 'flex';
 }
 
-// Function to close the info modal
 function closeInfoModal() {
-    infoModalOverlay.style.display = 'none'; // Hide the modal
+    infoModalOverlay.style.display = 'none';
 }
 
 async function viewTextFile(fileUrl) {
