@@ -63,7 +63,7 @@
     button:hover {
       background: #0284c7;
     }
-    .file-item {
+    .file-item, .folder-item { /* Added folder-item */
       margin-top: 20px;
       padding: 15px;
       background: #2a2a2a;
@@ -143,6 +143,31 @@
   cursor: not-allowed !important;
   opacity: 0.6;
 }
+    /* New styles for folder specific items */
+    .folder-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+    .folder-item span {
+      flex-grow: 1;
+    }
+    .folder-item button {
+      margin-left: 10px;
+      position: static; /* Override absolute positioning */
+      padding: 4px 8px; /* Smaller padding */
+    }
+    .current-path {
+        margin-top: 10px;
+        color: var(--subtext);
+    }
+    .back-btn {
+        background: #4CAF50; /* Green for back button */
+    }
+    .back-btn:hover {
+        background: #45a049;
+    }
   </style>
 </head>
 <body>
@@ -159,24 +184,38 @@
     </div>
 
     <div id="upload-container" style="display:none;">
-      <input type="file" id="fileInput" />
+      <input type="text" id="folderNameInput" placeholder="New folder name" />
+      <button onclick="createFolder()">➕ Create Folder</button>
+      <hr> <input type="file" id="fileInput" />
       <button onclick="uploadFile()">⬆ Upload</button>
       <button id="clear-saved-btn" class="disabled-btn">🗑 Clear Saved</button>
       <button id="logout-btn">Sign Out</button>
-      <div id="fileList"></div>
+
+      <div class="current-path">
+          Current Path: <span id="currentPathDisplay">/</span>
+          <button id="back-btn" class="back-btn" style="display:none;">⬅ Back</button>
+      </div>
+
+      <div id="folderList"></div> <div id="fileList"></div>
     </div>
   </div>
 
 <script>
   const client = supabase.createClient(
     'https://thenkydyibcxlcvdgifo.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRoZW5reWR5aWJjeGxjdmRnaWZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NzE2MDgsImV4cCI6MjA2NzA0NzYwOH0.fkms-yQx1ODCKczimbapEwxcHahYfb9En-vxX9GzfQo'
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRoZW5reWR5aWJjeGxjdmRnaWZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NzE2MDgsImV4cCI6MjA2NzA0NzYwOH0.fkms-yQx1ODCKczimbapEwxcHahYfb1En-vxX9GzfQo'
   );
   const BUCKET = 'testfiles';
 
   const authContainer = document.getElementById('auth-container');
   const uploadContainer = document.getElementById('upload-container');
   const authMessage = document.getElementById('auth-message');
+  const folderListDiv = document.getElementById('folderList'); // Get the new folder list div
+  const currentPathDisplay = document.getElementById('currentPathDisplay');
+  const backButton = document.getElementById('back-btn');
+
+  let currentFolderId = null; // To keep track of the current folder
+  let currentFolderPath = []; // To keep track of the path for display
 
   document.getElementById('login-btn').addEventListener('click', async () => {
     authMessage.textContent = '';
@@ -228,12 +267,16 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
       authContainer.style.display = 'none';
       uploadContainer.style.display = 'block';
       authMessage.textContent = '';
-      displayFiles();
+      currentFolderId = null; // Reset to root when logged in
+      currentFolderPath = [];
+      displayContent(); // Call a new function to display both folders and files
     } else {
       authContainer.style.display = 'block';
       uploadContainer.style.display = 'none';
       authMessage.style.color = '#e55353';
       authMessage.textContent = '';
+      currentFolderId = null;
+      currentFolderPath = [];
     }
   });
 
@@ -242,7 +285,7 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
   const file = fileInput.files[0];
   if (!file) return alert("Choose a file first!");
 
-  const filePath = `${Date.now()}_${file.name}`;
+  const filePath = currentFolderId ? `${currentFolderId}/${Date.now()}_${file.name}` : `${Date.now()}_${file.name}`;
   const { data, error } = await client.storage.from(BUCKET).upload(filePath, file);
   if (error) return alert("Upload failed: " + error.message);
 
@@ -260,7 +303,8 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
     user_id: userId,
     name: file.name,
     nickname: '',
-    url: publicData.publicUrl
+    url: publicData.publicUrl,
+    folder_id: currentFolderId // Assign current folder ID
   });
 
   if (insertError) {
@@ -268,73 +312,195 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
     return alert("Could not save metadata");
   }
 
-  displayFiles();
+  displayContent(); // Refresh content
   fileInput.value = '';
 }
-  function saveFileLocally(name, url, nickname = '') {
-    const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
-    files.unshift({ name, url, nickname });
-    localStorage.setItem('uploadedFiles', JSON.stringify(files));
+
+  async function displayContent() {
+    await displayFolders();
+    await displayFiles();
+    updatePathDisplay();
   }
 
-  function clearFiles() {
-    if (confirm("Clear all saved files?")) {
-      localStorage.removeItem('uploadedFiles');
-      displayFiles();
+  async function displayFolders() {
+    const user = (await client.auth.getUser()).data.user;
+    if (!user) {
+      folderListDiv.innerHTML = '';
+      return;
     }
-  }
 
-  function deleteFile(index) {
-    const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
-    files.splice(index, 1);
-    localStorage.setItem('uploadedFiles', JSON.stringify(files));
-    displayFiles();
-  }
+    const { data, error } = await client
+      .from('folders')
+      .select('*')
+      .eq('user_id', user.id)
+      .is('parent_id', currentFolderId) // Filter by currentFolderId
+      .order('name', { ascending: true });
 
-  function renameFile(index) {
-    const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
-    const current = files[index].nickname || '';
-    const newNick = prompt("Enter a nickname for this file:", current);
-    if (newNick === null) return; // cancelled
-    files[index].nickname = newNick.trim();
-    localStorage.setItem('uploadedFiles', JSON.stringify(files));
-    displayFiles();
-  }
+    folderListDiv.innerHTML = '';
 
-  function displayFiles() {
-    const container = document.getElementById('fileList');
-    const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
-    container.innerHTML = '';
+    if (error) {
+      console.error(error);
+      return alert("Failed to load folders.");
+    }
 
-    files.forEach((file, index) => {
-      const ext = file.name.split('.').pop().toLowerCase();
-      const isImage = ['jpg', 'jpeg', 'png', 'gif'].includes(ext);
-      const isVideo = ['mp4', 'webm', 'ogg'].includes(ext);
-      const preview = isImage
-        ? `<img src="${file.url}">`
-        : isVideo
-          ? `<video controls src="${file.url}"></video>`
-          : `<a href="${file.url}" target="_blank">Download File</a>`;
+    if (!data.length && !document.getElementById('fileList').children.length) {
+      folderListDiv.innerHTML = '<p>No folders or files here yet.</p>';
+    }
 
-      container.innerHTML += `
-        <div class="file-item">
-          <button class="delete-btn" onclick="deleteFile(${index})" title="Delete this file">🗑</button>
-          <button class="rename-btn" onclick="renameFile(${index})" title="Add/Update nickname">✏</button>
-          <strong>${file.name}</strong>
-          ${file.nickname ? `<div><em>Nickname: ${file.nickname}</em></div>` : ''}
-          ${preview}
-          <br/>
-          <small><a href="${file.url}" target="_blank">${file.url}</a></small>
+    data.forEach((folder) => {
+      folderListDiv.innerHTML += `
+        <div class="folder-item" onclick="enterFolder('${folder.id}', '${folder.name}')">
+          <span>📁 <strong>${folder.name}</strong></span>
+          <div>
+            <button class="rename-btn" onclick="event.stopPropagation(); renameFolder('${folder.id}', '${folder.name}')" title="Rename folder">✏</button>
+            <button class="delete-btn" onclick="event.stopPropagation(); deleteFolder('${folder.id}')" title="Delete folder">🗑</button>
+          </div>
         </div>
       `;
     });
   }
-  async function displayFiles() {
+
+  async function createFolder() {
+    const folderNameInput = document.getElementById('folderNameInput');
+    const folderName = folderNameInput.value.trim();
+    if (!folderName) {
+      return alert("Please enter a folder name.");
+    }
+
+    const user = (await client.auth.getUser()).data.user;
+    if (!user) return alert("User not authenticated.");
+
+    const { error } = await client.from('folders').insert({
+      user_id: user.id,
+      name: folderName,
+      parent_id: currentFolderId
+    });
+
+    if (error) {
+      if (error.code === '23505') { // Unique violation error code
+        return alert("A folder with this name already exists here.");
+      }
+      console.error(error);
+      return alert("Failed to create folder: " + error.message);
+    }
+
+    folderNameInput.value = '';
+    displayContent();
+  }
+
+  async function renameFolder(folderId, currentName) {
+    const newName = prompt("Enter new name for folder:", currentName);
+    if (newName === null || newName.trim() === '' || newName.trim() === currentName) return;
+
+    const user = (await client.auth.getUser()).data.user;
+    if (!user) return alert("User not authenticated.");
+
+    const { error } = await client.from('folders').update({ name: newName.trim() }).eq('id', folderId);
+    if (error) {
+      if (error.code === '23505') {
+        return alert("A folder with this name already exists in this location.");
+      }
+      console.error(error);
+      return alert("Failed to rename folder.");
+    }
+    // Update path if the renamed folder is in the current path
+    const pathIndex = currentFolderPath.findIndex(f => f.id === folderId);
+    if (pathIndex !== -1) {
+        currentFolderPath[pathIndex].name = newName.trim();
+    }
+    displayContent();
+  }
+
+  async function deleteFolder(folderId) {
+    const confirmed = confirm("Are you sure you want to delete this folder and all its contents (files and subfolders)? This cannot be undone.");
+    if (!confirmed) return;
+
+    const user = (await client.auth.getUser()).data.user;
+    if (!user) return alert("User not authenticated.");
+
+    try {
+        // First, delete all files within this folder and its subfolders
+        const { data: filesToDelete, error: filesError } = await client
+            .from('files')
+            .select('id, name')
+            .eq('user_id', user.id)
+            .ilike('path', `%${folderId}%`); // Assuming you store path in storage, or recursively delete
+
+        // Note: For actual storage files, you'd need to list and delete from the Supabase Storage bucket as well.
+        // This example only deletes metadata from the 'files' table.
+        // For deleting from storage bucket, you'd iterate through filesToDelete and call client.storage.from(BUCKET).remove()
+
+        if (filesError) throw filesError;
+
+        if (filesToDelete.length > 0) {
+            const fileIdsToDelete = filesToDelete.map(f => f.id);
+            const { error: deleteFilesError } = await client
+                .from('files')
+                .delete()
+                .in('id', fileIdsToDelete);
+            if (deleteFilesError) throw deleteFilesError;
+        }
+
+        // Recursively delete subfolders (if you track them explicitly)
+        // For simplicity, this example just deletes the main folder entry.
+        // A more robust solution would involve a database trigger or a serverless function to cascade deletes.
+
+        const { error } = await client.from('folders').delete().eq('id', folderId);
+        if (error) {
+            console.error(error);
+            return alert("Failed to delete folder.");
+        }
+
+        // If the deleted folder was the current one or a parent, navigate up
+        const pathIndex = currentFolderPath.findIndex(f => f.id === folderId);
+        if (pathIndex !== -1) {
+            currentFolderId = pathIndex > 0 ? currentFolderPath[pathIndex - 1].id : null;
+            currentFolderPath = currentFolderPath.slice(0, pathIndex);
+        }
+
+        displayContent();
+    } catch (error) {
+        console.error("Error deleting folder and its contents:", error);
+        alert("An error occurred while deleting the folder and its contents.");
+    }
+  }
+
+  async function enterFolder(folderId, folderName) {
+    currentFolderId = folderId;
+    currentFolderPath.push({ id: folderId, name: folderName });
+    displayContent();
+  }
+
+  backButton.addEventListener('click', () => {
+    if (currentFolderPath.length > 0) {
+        currentFolderPath.pop(); // Remove the current folder from the path
+        currentFolderId = currentFolderPath.length > 0 ? currentFolderPath[currentFolderPath.length - 1].id : null;
+        displayContent();
+    }
+  });
+
+  function updatePathDisplay() {
+      const pathString = currentFolderPath.map(f => f.name).join(' / ');
+      currentPathDisplay.textContent = `/ ${pathString}`;
+      if (currentFolderId) {
+          backButton.style.display = 'inline-block';
+      } else {
+          backButton.style.display = 'none';
+      }
+  }
+
+async function displayFiles() {
   const user = (await client.auth.getUser()).data.user;
+  if (!user) {
+    document.getElementById('fileList').innerHTML = '';
+    return;
+  }
+
   const { data, error } = await client
     .from('files')
     .select('*')
     .eq('user_id', user.id)
+    .is('folder_id', currentFolderId) // Filter by currentFolderId
     .order('created_at', { ascending: false });
 
   const container = document.getElementById('fileList');
@@ -345,8 +511,8 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
     return alert("Failed to load files.");
   }
 
-  if (!data.length) {
-    container.innerHTML = '<p>No files uploaded yet.</p>';
+  if (!data.length && !document.getElementById('folderList').children.length) {
+    container.innerHTML = '<p>No files or folders here yet.</p>';
     return;
   }
 
@@ -377,12 +543,30 @@ async function deleteFile(fileId) {
   const confirmed = confirm("Are you sure you want to delete this file?");
   if (!confirmed) return;
 
+  const { data: fileData, error: fetchError } = await client.from('files').select('url, name').eq('id', fileId).single();
+  if (fetchError || !fileData) {
+      console.error("Error fetching file for deletion:", fetchError);
+      return alert("Failed to find file for deletion.");
+  }
+
+  // Extract the path from the URL for Supabase Storage deletion
+  // This is a basic extraction and might need refinement depending on your exact URL structure
+  const filePathInStorage = fileData.url.split(BUCKET + '/').pop();
+
+  const { error: storageError } = await client.storage.from(BUCKET).remove([filePathInStorage]);
+  if (storageError) {
+      console.error("Error deleting from storage:", storageError);
+      // Decide if you want to abort if storage deletion fails but metadata deletion succeeds
+      // For now, we'll proceed to delete metadata even if storage deletion has issues
+      alert("Warning: Could not delete file from storage. Please check bucket manually if issue persists.");
+  }
+
   const { error } = await client.from('files').delete().eq('id', fileId);
   if (error) {
     console.error(error);
     return alert("Delete failed.");
   }
-  displayFiles();
+  displayContent(); // Refresh content
 }
 async function renameFile(fileId, currentNickname = '') {
   const newNick = prompt("Enter a nickname for this file:", currentNickname);
@@ -393,7 +577,7 @@ async function renameFile(fileId, currentNickname = '') {
     console.error(error);
     return alert("Rename failed.");
   }
-  displayFiles();
+  displayContent(); // Refresh content
 }
 document.getElementById('clear-saved-btn').addEventListener('click', () => {
   alert("This feature is not available.");
