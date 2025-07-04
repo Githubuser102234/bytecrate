@@ -138,80 +138,16 @@
       }
     }
     .disabled-btn {
-      background: #444 !important;
-      color: #888 !important;
-      cursor: not-allowed !important;
-      opacity: 0.6;
-    }
-    .file-actions {
-      margin-top: 10px;
-      display: flex;
-      gap: 5px;
-      flex-wrap: wrap;
-    }
-    .file-actions button {
-      width: auto;
-      flex-grow: 1;
-      padding: 8px 12px;
-      font-size: 14px;
-      margin-top: 0;
-    }
-    .make-public-btn {
-      background: #28a745;
-    }
-    .make-public-btn:hover {
-      background: #218838;
-    }
-    .make-private-btn {
-      background: #dc3545;
-    }
-    .make-private-btn:hover {
-      background: #c82333;
-    }
-    .public-link {
-        margin-top: 10px;
-        background: #3a3a3a;
-        padding: 8px;
-        border-radius: 6px;
-        font-size: 14px;
-        word-break: break-all;
-    }
-    .public-link a {
-        color: #90ee90;
-    }
-    /* Styles for single file view */
-    #single-file-view {
-        display: none; /* Hidden by default */
-        padding: 20px;
-        text-align: center;
-    }
-    #single-file-view img,
-    #single-file-view video {
-        max-width: 100%;
-        max-height: 80vh; /* Adjust as needed */
-        object-fit: contain;
-        border-radius: 8px;
-        margin-bottom: 20px;
-    }
-    #single-file-view a {
-        color: var(--accent);
-        font-size: 1.2em;
-        text-decoration: none;
-    }
-    #single-file-view button {
-        margin-top: 20px;
-        width: auto;
-        padding: 10px 20px;
-        background: #555;
-    }
-    #single-file-view button:hover {
-        background: #777;
-    }
+  background: #444 !important;
+  color: #888 !important;
+  cursor: not-allowed !important;
+  opacity: 0.6;
+}
   </style>
 </head>
 <body>
   <div class="container">
-    <h2 id="main-title">ByteCrate</h2>
+    <h2>ByteCrate</h2>
 
     <div id="auth-container">
       <input type="email" id="email" placeholder="Email" />
@@ -225,17 +161,10 @@
     <div id="upload-container" style="display:none;">
       <input type="file" id="fileInput" />
       <button onclick="uploadFile()">⬆ Upload</button>
-      <button id="clear-saved-btn">🗑 Clear Saved</button>
+      <button id="clear-saved-btn" class="disabled-btn">🗑 Clear Saved</button>
       <button id="logout-btn">Sign Out</button>
       <div id="fileList"></div>
     </div>
-
-    <div id="single-file-view" style="display:none;">
-      <h3>Shared File</h3>
-      <div id="shared-file-content"></div>
-      <button onclick="window.location.hash = ''; location.reload();">Go Back to My Files</button>
-    </div>
-
   </div>
 
 <script>
@@ -244,15 +173,10 @@
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRoZW5reWR5aWJjeGxjdmRnaWZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NzE2MDgsImV4cCI6MjA2NzA0NzYwOH0.fkms-yQx1ODCKczimbapEwxcHahYfb9En-vxX9GzfQo'
   );
   const BUCKET = 'testfiles';
-  const PUBLIC_BASE_URL = window.location.origin + window.location.pathname + '#';
 
   const authContainer = document.getElementById('auth-container');
   const uploadContainer = document.getElementById('upload-container');
   const authMessage = document.getElementById('auth-message');
-  const singleFileView = document.getElementById('single-file-view');
-  const sharedFileContent = document.getElementById('shared-file-content');
-  const mainTitle = document.getElementById('main-title');
-
 
   document.getElementById('login-btn').addEventListener('click', async () => {
     authMessage.textContent = '';
@@ -275,192 +199,114 @@
       authMessage.textContent = "Sign up successful! Please check your email to confirm.";
     }
   });
+document.getElementById('reset-password-btn').addEventListener('click', async () => {
+  const email = document.getElementById('email').value;
+  authMessage.style.color = '#e55353';
 
-  document.getElementById('reset-password-btn').addEventListener('click', async () => {
-    const email = document.getElementById('email').value;
-    authMessage.style.color = '#e55353';
+  if (!email) {
+    authMessage.textContent = 'Please enter your email above first.';
+    return;
+  }
 
-    if (!email) {
-      authMessage.textContent = 'Please enter your email above first.';
-      return;
-    }
-
-    const { error } = await client.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.href // Change this to your password reset page if needed
-    });
-
-    if (error) {
-      authMessage.textContent = error.message;
-    } else {
-      authMessage.style.color = '#0ea5e9';
-      authMessage.textContent = 'Reset link sent! Check your email.';
-    }
+  const { error } = await client.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.href // Change this to your password reset page if needed
   });
 
+  if (error) {
+    authMessage.textContent = error.message;
+  } else {
+    authMessage.style.color = '#0ea5e9';
+    authMessage.textContent = 'Reset link sent! Check your email.';
+  }
+});
   document.getElementById('logout-btn').addEventListener('click', async () => {
     await client.auth.signOut();
   });
 
   client.auth.onAuthStateChange((_event, session) => {
     if (session && session.user) {
-      // User is logged in
       authContainer.style.display = 'none';
       uploadContainer.style.display = 'block';
       authMessage.textContent = '';
-      singleFileView.style.display = 'none'; // Ensure single file view is hidden
-      mainTitle.textContent = 'ByteCrate - My Files'; // Change title
       displayFiles();
     } else {
-      // User is not logged in
-      const publicHash = window.location.hash.substring(1); // Get hash without '#'
-      if (publicHash) {
-          // If there's a hash, attempt to show shared file
-          displaySharedFile(publicHash);
-      } else {
-          // No hash, show login/signup
-          authContainer.style.display = 'block';
-          uploadContainer.style.display = 'none';
-          singleFileView.style.display = 'none';
-          authMessage.style.color = '#e55353';
-          authMessage.textContent = '';
-          mainTitle.textContent = 'ByteCrate'; // Revert title
-      }
+      authContainer.style.display = 'block';
+      uploadContainer.style.display = 'none';
+      authMessage.style.color = '#e55353';
+      authMessage.textContent = '';
     }
   });
 
   async function uploadFile() {
-    const fileInput = document.getElementById('fileInput');
-    const file = fileInput.files[0];
-    if (!file) return alert("Choose a file first!");
+  const fileInput = document.getElementById('fileInput');
+  const file = fileInput.files[0];
+  if (!file) return alert("Choose a file first!");
 
-    const filePath = `${Date.now()}_${file.name}`;
-    const { data, error } = await client.storage.from(BUCKET).upload(filePath, file);
-    if (error) return alert("Upload failed: " + error.message);
+  const filePath = `${Date.now()}_${file.name}`;
+  const { data, error } = await client.storage.from(BUCKET).upload(filePath, file);
+  if (error) return alert("Upload failed: " + error.message);
 
-    const { data: publicData } = client.storage.from(BUCKET).getPublicUrl(filePath);
+  const { data: publicData } = client.storage.from(BUCKET).getPublicUrl(filePath);
 
-    const {
-      data: userData,
-      error: userError
-    } = await client.auth.getUser();
-    const userId = userData?.user?.id;
+  const {
+    data: userData,
+    error: userError
+  } = await client.auth.getUser();
+  const userId = userData?.user?.id;
 
-    if (!userId) return alert("User not found");
+  if (!userId) return alert("User not found");
 
-    const { error: insertError } = await client.from('files').insert({
-      user_id: userId,
-      name: file.name,
-      nickname: '',
-      url: publicData.publicUrl,
-      is_public: false, // Default to private
-      public_hash: null // No hash initially
-    });
+  const { error: insertError } = await client.from('files').insert({
+    user_id: userId,
+    name: file.name,
+    nickname: '',
+    url: publicData.publicUrl
+  });
 
-    if (insertError) {
-      console.error("Insert error:", insertError);
-      return alert("Could not save metadata");
-    }
-
-    displayFiles();
-    fileInput.value = '';
+  if (insertError) {
+    console.error("Insert error:", insertError);
+    return alert("Could not save metadata");
   }
 
-  async function deleteFile(fileId, filePathInStorage) {
-    const confirmed = confirm("Are you sure you want to delete this file?");
-    if (!confirmed) return;
+  displayFiles();
+  fileInput.value = '';
+}
+  function saveFileLocally(name, url, nickname = '') {
+    const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
+    files.unshift({ name, url, nickname });
+    localStorage.setItem('uploadedFiles', JSON.stringify(files));
+  }
 
-    // Delete from Supabase Storage
-    const { error: storageError } = await client.storage.from(BUCKET).remove([filePathInStorage]);
-    if (storageError) {
-      console.error("Storage delete error:", storageError);
-      alert("Failed to delete file from storage.");
-      return;
+  function clearFiles() {
+    if (confirm("Clear all saved files?")) {
+      localStorage.removeItem('uploadedFiles');
+      displayFiles();
     }
+  }
 
-    // Delete from 'files' table
-    const { error: dbError } = await client.from('files').delete().eq('id', fileId);
-    if (dbError) {
-      console.error("Database delete error:", dbError);
-      return alert("Failed to delete file record.");
-    }
+  function deleteFile(index) {
+    const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
+    files.splice(index, 1);
+    localStorage.setItem('uploadedFiles', JSON.stringify(files));
     displayFiles();
   }
 
-  async function renameFile(fileId, currentNickname = '') {
-    const newNick = prompt("Enter a nickname for this file:", currentNickname);
-    if (newNick === null) return;
-
-    const { error } = await client.from('files').update({ nickname: newNick.trim() }).eq('id', fileId);
-    if (error) {
-      console.error(error);
-      return alert("Rename failed.");
-    }
+  function renameFile(index) {
+    const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
+    const current = files[index].nickname || '';
+    const newNick = prompt("Enter a nickname for this file:", current);
+    if (newNick === null) return; // cancelled
+    files[index].nickname = newNick.trim();
+    localStorage.setItem('uploadedFiles', JSON.stringify(files));
     displayFiles();
   }
 
-  function generatePublicHash(length = 10) {
-    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let result = '';
-    for (let i = 0; i < length; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
-  }
-
-  async function toggleFilePublicStatus(fileId, currentIsPublic, currentPublicHash) {
-    let newIsPublic;
-    let newPublicHash;
-
-    if (currentIsPublic) {
-      // Make Private
-      newIsPublic = false;
-      newPublicHash = null;
-    } else {
-      // Make Public
-      newIsPublic = true;
-      newPublicHash = currentPublicHash || generatePublicHash();
-    }
-
-    const { error } = await client
-      .from('files')
-      .update({ is_public: newIsPublic, public_hash: newPublicHash })
-      .eq('id', fileId);
-
-    if (error) {
-      console.error("Update public status failed:", error);
-      return alert("Failed to update public status.");
-    }
-    displayFiles();
-  }
-
-  async function displayFiles() {
-    const user = (await client.auth.getUser()).data.user;
-    const { data, error } = await client
-      .from('files')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-
+  function displayFiles() {
     const container = document.getElementById('fileList');
+    const files = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
     container.innerHTML = '';
 
-    if (error) {
-      console.error(error);
-      return alert("Failed to load files.");
-    }
-
-    if (!data.length) {
-      container.innerHTML = '<p>No files uploaded yet.</p>';
-      document.getElementById('clear-saved-btn').classList.add('disabled-btn');
-      document.getElementById('clear-saved-btn').disabled = true;
-      return;
-    }
-
-    document.getElementById('clear-saved-btn').classList.remove('disabled-btn');
-    document.getElementById('clear-saved-btn').disabled = false;
-
-
-    data.forEach((file) => {
+    files.forEach((file, index) => {
       const ext = file.name.split('.').pop().toLowerCase();
       const isImage = ['jpg', 'jpeg', 'png', 'gif'].includes(ext);
       const isVideo = ['mp4', 'webm', 'ogg'].includes(ext);
@@ -470,153 +316,88 @@
           ? `<video controls src="${file.url}"></video>`
           : `<a href="${file.url}" target="_blank">Download File</a>`;
 
-      const publicLinkHTML = file.is_public && file.public_hash
-        ? `<div class="public-link">Public Link: <a href="${PUBLIC_BASE_URL}${file.public_hash}" target="_blank">${PUBLIC_BASE_URL}${file.public_hash}</a></div>`
-        : '';
-
-      // Extract file path from URL for storage deletion
-      const urlParts = file.url.split('/');
-      const bucketIndex = urlParts.indexOf(BUCKET);
-      const filePathInStorage = urlParts.slice(bucketIndex + 1).join('/');
-
-
       container.innerHTML += `
         <div class="file-item">
-          <button class="delete-btn" onclick="deleteFile('${file.id}', '${filePathInStorage}')" title="Delete this file">🗑</button>
-          <button class="rename-btn" onclick="renameFile('${file.id}', '${file.nickname || ''}')" title="Add/Update nickname">✏</button>
+          <button class="delete-btn" onclick="deleteFile(${index})" title="Delete this file">🗑</button>
+          <button class="rename-btn" onclick="renameFile(${index})" title="Add/Update nickname">✏</button>
           <strong>${file.name}</strong>
           ${file.nickname ? `<div><em>Nickname: ${file.nickname}</em></div>` : ''}
           ${preview}
           <br/>
           <small><a href="${file.url}" target="_blank">${file.url}</a></small>
-          ${publicLinkHTML}
-          <div class="file-actions">
-            <button class="make-public-btn" onclick="toggleFilePublicStatus('${file.id}', ${file.is_public}, '${file.public_hash || ''}')">
-              ${file.is_public ? 'Make Private' : 'Make Public'}
-            </button>
-          </div>
         </div>
       `;
     });
   }
+  async function displayFiles() {
+  const user = (await client.auth.getUser()).data.user;
+  const { data, error } = await client
+    .from('files')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
 
-  document.getElementById('clear-saved-btn').addEventListener('click', async () => {
-    const confirmed = confirm("Are you sure you want to delete ALL your uploaded files? This action cannot be undone.");
-    if (!confirmed) return;
+  const container = document.getElementById('fileList');
+  container.innerHTML = '';
 
-    const user = (await client.auth.getUser()).data.user;
-    if (!user) {
-        alert("User not logged in.");
-        return;
-    }
+  if (error) {
+    console.error(error);
+    return alert("Failed to load files.");
+  }
 
-    // Fetch all file records for the user
-    const { data: files, error: fetchError } = await client
-        .from('files')
-        .select('id, url');
+  if (!data.length) {
+    container.innerHTML = '<p>No files uploaded yet.</p>';
+    return;
+  }
 
-    if (fetchError) {
-        console.error("Error fetching files for clear:", fetchError);
-        return alert("Failed to fetch files for deletion.");
-    }
-
-    if (files.length === 0) {
-        alert("No files to clear.");
-        return;
-    }
-
-    // Prepare an array of file paths in storage to delete
-    const filePathsToDelete = files.map(file => {
-        const urlParts = file.url.split('/');
-        const bucketIndex = urlParts.indexOf(BUCKET);
-        return urlParts.slice(bucketIndex + 1).join('/');
-    });
-
-    // Delete files from Supabase Storage
-    if (filePathsToDelete.length > 0) {
-        const { error: storageDeleteError } = await client.storage.from(BUCKET).remove(filePathsToDelete);
-        if (storageDeleteError) {
-            console.error("Error deleting files from storage:", storageDeleteError);
-            alert("Some files might not have been deleted from storage.");
-        }
-    }
-
-    // Delete records from 'files' table
-    const { error: dbDeleteError } = await client
-        .from('files')
-        .delete()
-        .eq('user_id', user.id);
-
-    if (dbDeleteError) {
-        console.error("Error deleting file records from database:", dbDeleteError);
-        return alert("Failed to delete file records from database.");
-    }
-
-    alert("All files cleared successfully!");
-    displayFiles();
-  });
-
-  // --- Single File View Logic ---
-  async function displaySharedFile(publicHash) {
-    mainTitle.textContent = 'ByteCrate - Shared File'; // Change title
-    authContainer.style.display = 'none';
-    uploadContainer.style.display = 'none';
-    singleFileView.style.display = 'block';
-    sharedFileContent.innerHTML = '<p>Loading file...</p>';
-
-    const { data, error } = await client
-      .from('files')
-      .select('*')
-      .eq('public_hash', publicHash)
-      .eq('is_public', true) // Ensure it's explicitly public
-      .single(); // Expect only one result
-
-    if (error || !data) {
-      console.error("Error fetching shared file:", error);
-      sharedFileContent.innerHTML = '<p>File not found or not public.</p>';
-      return;
-    }
-
-    const file = data;
+  data.forEach((file) => {
     const ext = file.name.split('.').pop().toLowerCase();
     const isImage = ['jpg', 'jpeg', 'png', 'gif'].includes(ext);
     const isVideo = ['mp4', 'webm', 'ogg'].includes(ext);
+    const preview = isImage
+      ? `<img src="${file.url}">`
+      : isVideo
+        ? `<video controls src="${file.url}"></video>`
+        : `<a href="${file.url}" target="_blank">Download File</a>`;
 
-    let contentHTML;
-    if (isImage) {
-      contentHTML = `<img src="${file.url}" alt="${file.name}">`;
-    } else if (isVideo) {
-      contentHTML = `<video controls src="${file.url}" preload="metadata"></video>`;
-    } else {
-      contentHTML = `<a href="${file.url}" target="_blank" download>Download: ${file.name}</a><p>File type not directly viewable in browser.</p>`;
-    }
-
-    sharedFileContent.innerHTML = `
-      <h3>${file.nickname || file.name}</h3>
-      ${contentHTML}
+    container.innerHTML += `
+      <div class="file-item">
+        <button class="delete-btn" onclick="deleteFile('${file.id}')" title="Delete this file">🗑</button>
+        <button class="rename-btn" onclick="renameFile('${file.id}', '${file.nickname || ''}')" title="Add/Update nickname">✏</button>
+        <strong>${file.name}</strong>
+        ${file.nickname ? `<div><em>Nickname: ${file.nickname}</em></div>` : ''}
+        ${preview}
+        <br/>
+        <small><a href="${file.url}" target="_blank">${file.url}</a></small>
+      </div>
     `;
-  }
-
-  // Initial check on page load for a public hash
-  window.addEventListener('load', () => {
-    // Only process hash if no user session is active (i.e., not logged in)
-    client.auth.getSession().then(({ data: { session } }) => {
-        if (!session) { // If user is not logged in
-            const publicHash = window.location.hash.substring(1); // Get hash without '#'
-            if (publicHash) {
-                displaySharedFile(publicHash);
-            }
-        } else {
-            // If user is logged in, hide single file view and show user's files
-            singleFileView.style.display = 'none';
-            authContainer.style.display = 'none';
-            uploadContainer.style.display = 'block';
-            mainTitle.textContent = 'ByteCrate - My Files';
-            displayFiles();
-        }
-    });
   });
+}
+async function deleteFile(fileId) {
+  const confirmed = confirm("Are you sure you want to delete this file?");
+  if (!confirmed) return;
 
+  const { error } = await client.from('files').delete().eq('id', fileId);
+  if (error) {
+    console.error(error);
+    return alert("Delete failed.");
+  }
+  displayFiles();
+}
+async function renameFile(fileId, currentNickname = '') {
+  const newNick = prompt("Enter a nickname for this file:", currentNickname);
+  if (newNick === null) return;
+
+  const { error } = await client.from('files').update({ nickname: newNick.trim() }).eq('id', fileId);
+  if (error) {
+    console.error(error);
+    return alert("Rename failed.");
+  }
+  displayFiles();
+}
+document.getElementById('clear-saved-btn').addEventListener('click', () => {
+  alert("This feature is not available.");
+});
 </script>
 </body>
 </html>
