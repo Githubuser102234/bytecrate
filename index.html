@@ -168,6 +168,31 @@
     .back-btn:hover {
         background: #45a049;
     }
+
+    /* Styles for download button and size display */
+    .file-actions {
+      display: flex;
+      gap: 5px;
+      margin-top: 10px;
+    }
+    .file-actions button {
+      width: auto;
+      padding: 6px 10px;
+      font-size: 14px;
+      margin: 0; /* Override margin-top for buttons */
+      position: static; /* Override absolute positioning */
+    }
+    .download-btn {
+      background: #2196F3;
+    }
+    .download-btn:hover {
+      background: #0b7dda;
+    }
+    .file-size, .folder-size {
+        font-size: 0.9em;
+        color: var(--subtext);
+        margin-left: 10px;
+    }
   </style>
 </head>
 <body>
@@ -300,6 +325,15 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
     }
   });
 
+  // Helper function to format bytes into readable size
+  function formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
   async function uploadFile() {
     const fileInput = document.getElementById('fileInput');
     const file = fileInput.files[0];
@@ -327,14 +361,15 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
         return alert("Failed to get public URL after upload.");
     }
 
-    // Insert file metadata into 'files' table
+    // Insert file metadata into 'files' table, including file size
     const { error: insertError } = await client.from('files').insert({
       user_id: user.id,
       name: file.name,
       nickname: '',
       url: publicData.publicUrl,
       folder_id: currentFolderId, // Assign current folder ID
-      storage_path: filePathInStorage // Store the full storage path for deletion
+      storage_path: filePathInStorage, // Store the full storage path for deletion
+      size: file.size // Store the file size in bytes
     });
 
     if (insertError) {
@@ -405,10 +440,12 @@ document.getElementById('reset-password-btn').addEventListener('click', async ()
       return;
     }
 
+    // You would typically calculate folder size on the backend or with a more complex query
+    // For this example, we'll just put a placeholder for folder size
     data.forEach((folder) => {
       folderListDiv.innerHTML += `
         <div class="folder-item" onclick="enterFolder('${folder.id}', '${folder.name}')">
-          <span>📁 <strong>${folder.name}</strong></span>
+          <span>📁 <strong>${folder.name}</strong> <span class="folder-size">(Folder)</span></span>
           <div>
             <button class="rename-btn" onclick="event.stopPropagation(); renameFolder('${folder.id}', '${folder.name}')" title="Rename folder">✏</button>
             <button class="delete-btn" onclick="event.stopPropagation(); deleteFolder('${folder.id}')" title="Delete folder">🗑</button>
@@ -594,17 +631,20 @@ async function displayFiles() {
       ? `<img src="${file.url}">`
       : isVideo
         ? `<video controls src="${file.url}"></video>`
-        : `<a href="${file.url}" target="_blank">Download File</a>`;
+        : `<a href="${file.url}" target="_blank">Download File</a>`; // Fallback for other file types
 
     fileListDiv.innerHTML += `
       <div class="file-item">
-        <button class="delete-btn" onclick="deleteFile('${file.id}')" title="Delete this file">🗑</button>
-        <button class="rename-btn" onclick="renameFile('${file.id}', '${file.nickname || ''}')" title="Add/Update nickname">✏</button>
-        <strong>${file.name}</strong>
+        <strong>${file.name}</strong> <span class="file-size">(${formatBytes(file.size || 0)})</span>
         ${file.nickname ? `<div><em>Nickname: ${file.nickname}</em></div>` : ''}
         ${preview}
-        <br/>
-        <small><a href="${file.url}" target="_blank">${file.url}</a></small>
+        <div class="file-actions">
+            <a href="${file.url}" download="${file.name}">
+                <button class="download-btn">⬇ Download</button>
+            </a>
+            <button class="rename-btn" onclick="renameFile('${file.id}', '${file.nickname || ''}')" title="Add/Update nickname">✏</button>
+            <button class="delete-btn" onclick="deleteFile('${file.id}')" title="Delete this file">🗑</button>
+        </div>
       </div>
     `;
   });
